@@ -97,7 +97,13 @@ namespace Python {
 	}
 
 	void initialize() {
+        Py_Finalize();
+        
+        PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
+        
 		Py_Initialize();
+        
+        RunCmd("import " + ModuleName);
 	}
 
 	void finalize() {
@@ -242,10 +248,12 @@ namespace Python {
 		// The MethodDef contains all functions defined in C++ code,
 		// including those called into by exposed classes
 		PyObject * mod = Py_InitModule(ModuleName.c_str(), MethodDef.ptr());
+        
 		//if (mod == nullptr) ...
-		//Py_ErrorObj = PyErr_NewException((char *)(ModuleName + (".error")).c_str(), 0, 0);
-		//Py_XINCREF(Py_ErrorObj);
-		//PyModule_AddObject(mod, "error", Py_ErrorObj);
+        std::string errName = ModuleName + ".error";
+		Py_ErrorObj = PyErr_NewException((char *)errName.c_str(), 0, 0);
+		Py_XINCREF(Py_ErrorObj);
+		PyModule_AddObject(mod, "error", Py_ErrorObj);
 
 		// Is now the time to declare all classes?
 		for (auto& exp_class : ExposedClasses)

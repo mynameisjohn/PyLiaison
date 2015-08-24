@@ -435,6 +435,8 @@ namespace Python {
 	}
 
 	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
+    // The idea is to make a module where all your functions live
+    const static std::string ModuleName = "spam";
 
 	struct ExposedClass
 	{
@@ -486,9 +488,6 @@ namespace Python {
 	//int Runfile(std::string fileName) {
 	//	// load this to a string and run it
 	//}
-
-	// The idea is to make a module where all your functions live
-	const static std::string ModuleName = "spam";
 
 	// This gets called when the module is imported
 	PyMODINIT_FUNC _Mod_Init();
@@ -567,6 +566,10 @@ namespace Python {
 	inline PyObject * objToPyObj(const int& Value) {
 		return PyLong_FromLong(Value);
 	}
+    template <>
+    inline PyObject * objToPyObj(const float& Value) {
+        return PyFloat_FromDouble((double)Value);
+    }
 
 	// TODO void functions?
 	// This function declares a (global) python function that calls into an existing (global, static?) C++ function
@@ -578,16 +581,15 @@ namespace Python {
 		{
 			PyObject * ret = nullptr;
 
-			Python::Object args(a);
 			std::tuple<Args...> tup;
-			args.convert(tup);
+            Python::convert(a, tup);
 			R rVal = call<R>(fn, tup);
 			ret = objToPyObj<R>(rVal);
 
 			// The pywrapper deleter
 			// will do a decref on a...
 			// will this leak?
-			Py_XINCREF(a);
+//			Py_XINCREF(a);
 
 			return ret;
 		};
