@@ -560,11 +560,11 @@ namespace Python {
 
 	// TODO
 	template <typename T>
-	static inline PyObject * objToPyObj(const T& Value) {
+	inline PyObject * objToPyObj(const T& Value) {
 		return nullptr;
 	}
 	template <>
-	static inline PyObject * objToPyObj(const int& Value) {
+	inline PyObject * objToPyObj(const int& Value) {
 		return PyLong_FromLong(Value);
 	}
 
