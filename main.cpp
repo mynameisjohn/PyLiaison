@@ -19,6 +19,8 @@ bool ExposeFuncs(){
     std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
     Python::_add_Func<__LINE__>("Foo_getFloat", fooFn, METH_VARARGS, "Testing a member function");
     
+    Python::Register_Class<Foo>("Foo");
+    
     return true;
 }
 
@@ -32,5 +34,7 @@ int main(){
     Python::RunCmd("print spam.Foo_getFloat(2)");
     
 	cout << "hello world" << endl;
+    
+    cout << Python::ExposedClasses.begin()->second.classDef << endl;
 	return 0;
 }

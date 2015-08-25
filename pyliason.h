@@ -481,7 +481,7 @@ namespace Python {
 	extern PyObject * Py_ErrorObj;
 
 	static int RunCmd(std::string cmd) {
-		std::lock_guard<std::mutex> lg(CmdMutex);
+		//std::lock_guard<std::mutex> lg(CmdMutex);
 		return PyRun_SimpleString(cmd.c_str());
 	}
 
@@ -498,12 +498,15 @@ namespace Python {
 		if (ExposedClasses.find(typeid(C)) != ExposedClasses.end())
 			return;
 
+        // I believe four spaces are preferred to \t...
 		std::string classDef;
 		classDef.append("class ").append(className).append(":\n\
 			\tdef __init__( self, ecsPtr ):\n\
 			\t\tself._self = ecsPtr\n\
 			\tdef __call__( self ):\n\
 			\t\treturn self._self\n\n");
+        
+        
 
 		ExposedClasses[std::type_index(typeid(C))] = ExposedClass(className, classDef, std::vector<PyObject *>());
 
