@@ -481,7 +481,7 @@ namespace Python {
 	extern PyObject * Py_ErrorObj;
 
 	static int RunCmd(std::string cmd) {
-		//std::lock_guard<std::mutex> lg(CmdMutex);
+		std::lock_guard<std::mutex> lg(CmdMutex);
 		return PyRun_SimpleString(cmd.c_str());
 	}
 

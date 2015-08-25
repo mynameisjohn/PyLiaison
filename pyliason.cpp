@@ -97,13 +97,22 @@ namespace Python {
 	}
 
 	void initialize() {
+        // Finalize any previous stuff
         Py_Finalize();
         
+        // Call the _Mod_Init function when my module is imported
         PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
         
+        // Startup python
 		Py_Initialize();
         
-        RunCmd("import " + ModuleName);
+
+        // Import our module
+        std::string importString = "import " + ModuleName;
+        
+        // It seems like this is a bad time to lock a mutex
+        // so just run it the old fashioned way
+        PyRun_SimpleString(importString.c_str());
 	}
 
 	void finalize() {
