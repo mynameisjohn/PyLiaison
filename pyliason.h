@@ -531,33 +531,37 @@ namespace Python {
 	// object, giving it a pointer to the original object (which better stay live)
 	template <class C>
 	static void Expose_Object(C * instance, std::string name) {
+        // Make sure it's a vlid pointer
 		if (!instance)
 			return;
 
+        // If we haven't declared the class, we can't expose it
 		auto it = ExposedClasses.find(typeid(C));
 		if (it == ExposedClasses.end())
 			return;
 
-		PyObject * pyObject = static_cast<PyObject *>((void *)instance);
+        // Make a PyCObject from the void * to the instance
+		PyObject* newPyObject = PyCObject_FromVoidPtr((void *)instance, nullptr);
 
-		std::string pythonCall;
-		PyObject* module = NULL;
-
-		PyObject* newPyObject = PyCObject_FromVoidPtr((void *)instance, nullptr);//Py_BuildValue("k", pyObject);
-
+        // Make a dummy variable, assign it to the ptr
+        PyObject * module = PyImport_ImportModule("__main__");
 		PyRun_SimpleString("ecsPtr = 0");
-
-		module = PyImport_ImportModule("__main__");
 		PyObject_SetAttrString(module, "ecsPtr", newPyObject);
 
+        // Construct the python class
+        std::string pythonCall;
 		pythonCall.append(name).append(" = ").append(it->second.pyname).append("(ecsPtr)");
 		PyRun_SimpleString(pythonCall.c_str());
 
+        // Get rid of the dummy var
 		PyRun_SimpleString("del ecsPtr");
 
+        // decref and return
 		Py_DECREF(module);
 		Py_DECREF(newPyObject);
 
+        // Why does it need to be a pyObject?
+        PyObject * pyObject = static_cast<PyObject *>((void *)instance);
 		it->second.instances.push_back(pyObject);
 	}
 
@@ -617,12 +621,6 @@ namespace Python {
 			return;
 
         std::string pyModMethodName = classIt->second.pyname+"_"+methodName;
-        
-//		size_t pos = methodName.find("_");
-//        if (pos == std::string::npos || pos + 1 == methodName.size())
-//			return;
-//
-//		std::string pyModMethodName = methodName.substr(pos + 1, methodName.length());
 
 		size_t numArgs = sizeof...(Args);
 		std::string pyArgs;
@@ -643,30 +641,11 @@ namespace Python {
 		std::string fnDef;
         fnDef.append( "\tdef ").append(methodName).append("( self, ").append(pyArgs).append(" ):\n")
         .append("\t\t\t\t\treturn (");
-        fnDef.append(ModuleName).append(".").append(pyModMethodName).append("( self._self, ").append(pyArgs).append(" ))\n" );\
+        fnDef.append(ModuleName).append(".").append(pyModMethodName).append("( self._self, ").append(pyArgs).append(" ))\n" );
 
 		classIt->second.classDef.append("\t\t\t").append(fnDef);
-
-		PyFunc pfn = [fn](PyObject * s, PyObject * a)
-		{
-			PyObject * ret = nullptr;
-
-			std::tuple<Args...> tup;
-			Python::convert(a, tup);
-			R rVal = call<R>(fn, tup);
-			ret = objToPyObj<R>(rVal);
-
-			return ret;
-		};
-		ExposedFunctions.push_back(pfn);
-
-		// now make the function pointer (TODO figure out these ids)
-		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
-
-		// You can key the methodName string to a std::function
-		MethodDef.AddMethod(pyModMethodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
-
-
+        
+        Python::_add_Func<idx>(pyModMethodName, fn, methodFlags, docs);
 	}
 
 	// Invokes the above function with the correct
