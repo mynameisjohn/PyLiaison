@@ -616,7 +616,7 @@ namespace Python {
 			return;
 
 		size_t pos = methodName.find("_");
-		if (pos == string::npos || pos + 1 == methodName.size())
+        if (pos == std::string::npos || pos + 1 == methodName.size())
 			return;
 
 		std::string pyclsMethodName = methodName.substr(pos + 1, methodName.length());
