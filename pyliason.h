@@ -615,11 +615,13 @@ namespace Python {
 		if (classIt == ExposedClasses.end())
 			return;
 
-		size_t pos = methodName.find("_");
-        if (pos == std::string::npos || pos + 1 == methodName.size())
-			return;
-
-		std::string pyclsMethodName = methodName.substr(pos + 1, methodName.length());
+        std::string pyModMethodName = classIt->second.pyname+"_"+methodName;
+        
+//		size_t pos = methodName.find("_");
+//        if (pos == std::string::npos || pos + 1 == methodName.size())
+//			return;
+//
+//		std::string pyModMethodName = methodName.substr(pos + 1, methodName.length());
 
 		size_t numArgs = sizeof...(Args);
 		std::string pyArgs;
@@ -638,9 +640,9 @@ namespace Python {
 
         // I honestly can't explain most of these tabs. You'll need a good way if indenting
 		std::string fnDef;
-        fnDef.append( "\tdef ").append(pyclsMethodName).append("( self, ").append(pyArgs).append(" ):\n")
+        fnDef.append( "\tdef ").append(methodName).append("( self, ").append(pyArgs).append(" ):\n")
         .append("\t\t\t\t\treturn (");
-        fnDef.append(ModuleName).append(".").append(methodName).append("( self._self, ").append(pyArgs).append(" ))\n" );\
+        fnDef.append(ModuleName).append(".").append(pyModMethodName).append("( self._self, ").append(pyArgs).append(" ))\n" );\
 
 		classIt->second.classDef.append("\t\t\t").append(fnDef);
 
@@ -661,7 +663,7 @@ namespace Python {
 		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
 
 		// You can key the methodName string to a std::function
-		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
+		MethodDef.AddMethod(pyModMethodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 
 
 	}
