@@ -11,6 +11,7 @@ It's very much a work in progress, but when it's done it should be able to
       simply call into functions defined in that module.
       All classes are defined to have the () operator return a PyCObject, which provides a void * back to the 
       original object (which implies exposed object instances cannot move in memory)
+      
   2) Return Python data to C++
       This is where pywrapper shines, Python data (including lists, tuples, and dicts) can be converted to their
       C++ C Standard Lib counterparts. I had to add some functions to deal with object pointers and floats, and I
