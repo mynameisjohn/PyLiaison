@@ -517,14 +517,15 @@ namespace Python {
 
 	// This is the function that should initialize a class
 	// after it's declaration is finalized
-	template <class C>
-	static void Init_Class() {
-		auto it = ExposedClasses.find(typeid(C));
-		if (it == ExposedClasses.end())
-			return;
-
-		PyRun_SimpleString(it->second.classDef.c_str());
-	}
+    // This happens during ::initialize()
+//	template <class C>
+//	static void Init_Class() {
+//		auto it = ExposedClasses.find(typeid(C));
+//		if (it == ExposedClasses.end())
+//			return;
+//
+//		PyRun_SimpleString(it->second.classDef.c_str());
+//	}
 
 	// This will expose a specific C++ object instance as a Python
 	// object, giving it a pointer to the original object (which better stay live)
