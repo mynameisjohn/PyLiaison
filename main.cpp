@@ -37,7 +37,8 @@ int main(){
 	 Python::Expose_Object(&g_Foo, "g_Foo");
     
     Python::RunCmd("print spam.testArgs(1,2)");
-    Python::RunCmd("print spam.Foo_getFloat(g_Foo(), 2)");
+    //Python::RunCmd("print spam.Foo_getFloat(g_Foo(), 2)");
+    Python::RunCmd("print g_Foo.getFloat(2)");
     
 	cout << "hello world" << endl;
     

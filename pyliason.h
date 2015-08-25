@@ -604,7 +604,7 @@ namespace Python {
 		// You can key the methodName string to a std::function
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 	}
-#include <stdio.h>>
+
 	// TODO void functions?
 	// This function declares a (global) python function that calls into an existing (global, static?) C++ function
 	// Invoke with the macro below, which automatically sets idx from the line number (best I could do...)
@@ -636,14 +636,13 @@ namespace Python {
 				pyArgs.append(", ");
 		}
 
+        // I honestly can't explain most of these tabs. You'll need a good way if indenting
 		std::string fnDef;
-		fnDef.append("\n\tdef ").append(pyclsMethodName).append("(self, ").append(pyArgs).append("):\n");
-		fnDef.append("\t\treturn ").append(ModuleName).append(".").append(methodName)
-		.append("(self(), ").append(pyArgs).append(")\n\n");
+        fnDef.append( "\tdef ").append(pyclsMethodName).append("( self, ").append(pyArgs).append(" ):\n")
+        .append("\t\t\t\t\treturn (");
+        fnDef.append(ModuleName).append(".").append(methodName).append("( self._self, ").append(pyArgs).append(" ))\n" );\
 
-		classIt->second.classDef.append(fnDef);
-
-		printf("%s\n", classIt->second.classDef.c_str());
+		classIt->second.classDef.append("\t\t\t").append(fnDef);
 
 		PyFunc pfn = [fn](PyObject * s, PyObject * a)
 		{
