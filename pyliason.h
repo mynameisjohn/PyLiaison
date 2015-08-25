@@ -435,8 +435,8 @@ namespace Python {
 	}
 
 	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
-    // The idea is to make a module where all your functions live
-    const static std::string ModuleName = "spam";
+	// The idea is to make a module where all your functions live
+	const static std::string ModuleName = "spam";
 
 	struct ExposedClass
 	{
@@ -498,15 +498,15 @@ namespace Python {
 		if (ExposedClasses.find(typeid(C)) != ExposedClasses.end())
 			return;
 
-        // I believe four spaces are preferred to \t...
+		// I believe four spaces are preferred to \t...
 		std::string classDef;
 		classDef.append("class ").append(className).append(":\n\
 			\tdef __init__( self, ecsPtr ):\n\
 			\t\tself._self = ecsPtr\n\
 			\tdef __call__( self ):\n\
 			\t\treturn self._self\n\n");
-        
-        
+
+
 
 		ExposedClasses[std::type_index(typeid(C))] = ExposedClass(className, classDef, std::vector<PyObject *>());
 
@@ -541,7 +541,7 @@ namespace Python {
 
 		std::string pythonCall;
 		PyObject* module = NULL;
-		
+
 		PyObject* newPyObject = PyCObject_FromVoidPtr((void *)instance, nullptr);//Py_BuildValue("k", pyObject);
 
 		PyRun_SimpleString("ecsPtr = 0");
@@ -569,10 +569,10 @@ namespace Python {
 	inline PyObject * objToPyObj(const int& Value) {
 		return PyLong_FromLong(Value);
 	}
-    template <>
-    inline PyObject * objToPyObj(const float& Value) {
-        return PyFloat_FromDouble((double)Value);
-    }
+	template <>
+	inline PyObject * objToPyObj(const float& Value) {
+		return PyFloat_FromDouble((double)Value);
+	}
 
 	// TODO void functions?
 	// This function declares a (global) python function that calls into an existing (global, static?) C++ function
@@ -585,7 +585,7 @@ namespace Python {
 			PyObject * ret = nullptr;
 
 			std::tuple<Args...> tup;
-            Python::convert(a, tup);
+			Python::convert(a, tup);
 			R rVal = call<R>(fn, tup);
 			ret = objToPyObj<R>(rVal);
 
@@ -603,6 +603,68 @@ namespace Python {
 
 		// You can key the methodName string to a std::function
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
+	}
+#include <stdio.h>>
+	// TODO void functions?
+	// This function declares a (global) python function that calls into an existing (global, static?) C++ function
+	// Invoke with the macro below, which automatically sets idx from the line number (best I could do...)
+	template <size_t idx, class C, typename R, typename ... Args>
+	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
+	{
+		auto classIt = ExposedClasses.find(typeid(C));
+		if (classIt == ExposedClasses.end())
+			return;
+
+		size_t pos = methodName.find("_");
+		if (pos == string::npos || pos + 1 == methodName.size())
+			return;
+
+		std::string pyclsMethodName = methodName.substr(pos + 1, methodName.length());
+
+		size_t numArgs = sizeof...(Args);
+		std::string pyArgs;
+		const char diff = char(0x7A - 0x61); //'a' => 'z'
+		for (int i = 0; i < numArgs - 1; i++)
+		{
+			std::string prePend;
+			for (int p = 0; p < (i / diff); p++)
+				prePend.append("_");
+			char id = (char(0x61) + char(i % diff));
+			pyArgs.append(prePend);
+			pyArgs += id;
+			if (i + 2 < numArgs)
+				pyArgs.append(", ");
+		}
+
+		std::string fnDef;
+		fnDef.append("\n\tdef ").append(pyclsMethodName).append("(self, ").append(pyArgs).append("):\n");
+		fnDef.append("\t\treturn ").append(ModuleName).append(".").append(methodName)
+		.append("(self(), ").append(pyArgs).append(")\n\n");
+
+		classIt->second.classDef.append(fnDef);
+
+		printf("%s\n", classIt->second.classDef.c_str());
+
+		PyFunc pfn = [fn](PyObject * s, PyObject * a)
+		{
+			PyObject * ret = nullptr;
+
+			std::tuple<Args...> tup;
+			Python::convert(a, tup);
+			R rVal = call<R>(fn, tup);
+			ret = objToPyObj<R>(rVal);
+
+			return ret;
+		};
+		ExposedFunctions.push_back(pfn);
+
+		// now make the function pointer (TODO figure out these ids)
+		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
+
+		// You can key the methodName string to a std::function
+		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
+
+
 	}
 
 	// Invokes the above function with the correct

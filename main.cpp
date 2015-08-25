@@ -3,8 +3,8 @@ using namespace std;
 
 #include "pyliason.h"
 
-int testArgs(int x, float y){
-    return x+int(y);
+int testArgs(int x, int y){
+    return x+y;
 }
 
 struct Foo{
@@ -13,13 +13,17 @@ struct Foo{
     }
 };
 
+Foo g_Foo;
+
 bool ExposeFuncs(){
     Py_Add_Func("testArgs", testArgs, "test adding two args");
     
     std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
-    Python::_add_Func<__LINE__>("Foo_getFloat", fooFn, METH_VARARGS, "Testing a member function");
+	 Python::Register_Class<Foo>("Foo");
+    Python::_add_Func<__LINE__, Foo>("Foo_getFloat", fooFn, METH_VARARGS, "Testing a member function");
     
-    Python::Register_Class<Foo>("Foo");
+    
+	 
     
     return true;
 }
@@ -29,9 +33,11 @@ int main(){
     
     // All exposed functions should be exposed before this call
     Python::initialize();
+
+	 Python::Expose_Object(&g_Foo, "g_Foo");
     
     Python::RunCmd("print spam.testArgs(1,2)");
-    Python::RunCmd("print spam.Foo_getFloat(2)");
+    Python::RunCmd("print spam.Foo_getFloat(g_Foo(), 2)");
     
 	cout << "hello world" << endl;
     
