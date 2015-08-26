@@ -108,8 +108,8 @@ namespace Python {
 			Py_Initialize();
         
 
-        // Import our module
-        std::string importString = "import " + ModuleName;
+        // Import our module (this makes it a bit easier)
+			std::string importString = "from " + ModuleName + " import *";
         
         // It seems like this is a bad time to lock a mutex
         // so just run it the old fashioned way

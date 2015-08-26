@@ -136,7 +136,7 @@ namespace Python
 		// I honestly can't explain most of these tabs. You'll need a good way if indenting
 		std::string fnDef;
 		fnDef += getTabs(1) + "def " + methodName + "( self, " + pyArgs + "):\n";
-		fnDef += getTabs(2) + "return " + ModuleName + "." + pyModMethodName + "(self._self, " + pyArgs + ")\n";
+		fnDef += getTabs(2) + "return " + pyModMethodName + "(self._self, " + pyArgs + ")\n";
 
 		std::cout << fnDef << std::endl;
 
