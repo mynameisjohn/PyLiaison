@@ -18,13 +18,14 @@
 *
 */
 
-#include <algorithm>
 #include "pyliason.h"
 
-using std::runtime_error;
-using std::string;
+#include <algorithm>
 
 namespace Python {
+	using std::runtime_error;
+	using std::string;
+
 	Object::Object() {
 
 	}
@@ -104,7 +105,7 @@ namespace Python {
         PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
         
         // Startup python
-		Py_Initialize();
+			Py_Initialize();
         
 
         // Import our module
@@ -157,6 +158,11 @@ namespace Python {
 		return PyFloat_FromDouble(num);
 	}
 
+	PyObject *alloc_pyobject(float num) {
+		double d_num(num);
+		return PyFloat_FromDouble(d_num);
+	}
+
 	bool is_py_int(PyObject *obj) {
 		return PyInt_Check(obj);
 	}
@@ -207,10 +213,6 @@ namespace Python {
 		val = float(d);
 		return ret;
 	}
-
-	/*bool convert(PyObject *obj, size_t &val) {
-	return generic_convert<size_t>(obj, is_py_int, PyInt_AsLong, val);
-	}*/
 
 	std::map<std::type_index, ExposedClass> ExposedClasses;
 	std::string ClassesDef; // Do I still need this?
@@ -271,9 +273,4 @@ namespace Python {
 			RunCmd(classDef.c_str());
 		}
 	}
-
-	//template<>
-	//PyObject * objToPyObj<int>(const int& Value) {
-	//	return PyLong_FromLong(Value);
-	//}
 }
