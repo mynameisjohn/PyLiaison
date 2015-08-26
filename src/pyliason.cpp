@@ -21,6 +21,7 @@
 #include "pyliason.h"
 
 #include <algorithm>
+#include <fstream>
 
 namespace Python {
 	using std::runtime_error;
@@ -131,6 +132,14 @@ namespace Python {
 	void print_object(PyObject *obj) {
 		PyObject_Print(obj, stdout, 0);
 	}
+    
+    // TODO
+    // What's the difference between this and pywrapper::from_script
+    int RunFile(std::string fileName){
+        std::ifstream in(fileName);
+        std::string cmd((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        return RunCmd(cmd);
+    }
 
 	// Allocation methods
 

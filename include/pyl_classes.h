@@ -16,13 +16,25 @@ namespace Python
 	};
 	// unique_ptr that uses Py_XDECREF as the destructor function.
 	typedef std::unique_ptr<PyObject, PyObjectDeleter> pyunique_ptr;
+    
+    // This feels gross
+    using voidptr_t = void *;
 
+    // Defines an exposed class (which is not per instance)
+    // as well as a list of exposed instances
 	struct ExposedClass
 	{
-		std::vector<PyObject *> instances;
-		std::string pyname;
-		std::string classDef;
-		ExposedClass(std::string n = " ", std::string d = "", std::vector<PyObject *> v = {});
+        struct Instance{
+            voidptr_t c_ptr;
+            std::string pyname;
+        };
+        // A list of exposed C++ object pointers
+		std::list<Instance> Instances;
+        // The name of the python class
+		std::string PyClassName;
+        // The class definition
+		std::string ClassDef;
+		ExposedClass(std::string n = " ", std::string d = "", std::vector<Instance> v = {});
 	};
 
 	// We need to keep the method definition's

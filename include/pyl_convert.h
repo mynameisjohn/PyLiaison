@@ -25,7 +25,9 @@ namespace Python
 		return true;
 	}
 
-	// I need pointer conversion
+	// This gets invoked on calls to member functions
+    // It may be dangerous, since any pointer type will be interpreted
+    // as a PyCObject, but so far it's been useful (do I need the reverse function?)
 	template<typename T>
 	bool convert(PyObject * obj, T *& val) {
 		val = static_cast<T *>(PyCObject_AsVoidPtr(obj));

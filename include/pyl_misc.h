@@ -1,11 +1,12 @@
 #pragma once
 
 #include <functional>
+#include <string>
 
 namespace Python
 {
+    // Utility for preprending tabs to python code
 	const std::string py_tab = "    ";
-
 	inline std::string getTabs(int n) {
 		std::string ret;
 		for (int i = 0; i < n; i++)
@@ -13,6 +14,9 @@ namespace Python
 		return ret;
 	}
 
+    // This was stolen from stack overflow user irdjan
+    // it lets functions be called directly with a std::tuple
+    
 	// implementation details, users never invoke these directly
 	namespace detail
 	{
@@ -43,10 +47,11 @@ namespace Python
 		return detail::call_impl<R, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call(f, std::forward<Tuple>(t));
 	}
 
-
-
-
-
+    
+    // This was also stolen from stack overflow
+    // but I'm hoping to phase it out. It allows me to expose
+    // std::functions as function pointers, which python
+    // wants for its PyMethodDef buffer
 
 	template <const size_t _UniqueId, typename _Res, typename... _ArgTypes>
 	struct fun_ptr_helper

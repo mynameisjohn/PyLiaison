@@ -10,6 +10,7 @@
 // I don't know how to declare all these without
 // explicity specializing the templates... Unforunate
 
+// TODO make a member function equivalent of this
 #define Py_Add_Func(name, fn, docs)\
 	Python::_add_Func<__LINE__>(std::string(name), Python::make_function(fn), METH_VARARGS, docs)
 
@@ -28,12 +29,14 @@ namespace Python
 	extern MethodDefinitions MethodDef;
 	extern PyObject * Py_ErrorObj;
 
+    // Add a new method def fo the Method Definitions of the module
 	template <size_t idx>
 	void _add_Method_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs)
 	{
+        // We need to store these where they won't move
 		ExposedFunctions.push_back(pFn);
 
-		// now make the function pointer (TODO figure out these ids)
+		// now make the function pointer (TODO figure out these ids, or do something else)
 		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
 
 		// You can key the methodName string to a std::function
@@ -46,8 +49,6 @@ namespace Python
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
-			PyObject * ret = nullptr;
-
 			std::tuple<Args...> tup;
 			convert(a, tup);
 			R rVal = call<R>(fn, tup);
@@ -81,11 +82,9 @@ namespace Python
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
-			PyObject * ret = nullptr;
-
 			R rVal = fn();
 
-			return alloc_pyobject(R);
+			return alloc_pyobject(rVal);
 		};
 
 		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
@@ -117,7 +116,7 @@ namespace Python
 		if (classIt == ExposedClasses.end())
 			return "Error creating class!";
 
-		std::string pyModMethodName = classIt->second.pyname + "_" + methodName;
+		std::string pyModMethodName = classIt->second.PyClassName + "_" + methodName;
 
 		std::string pyArgs;
 		const char diff = char(0x7A - 0x61); //'a' => 'z'
@@ -140,7 +139,7 @@ namespace Python
 
 		std::cout << fnDef << std::endl;
 
-		classIt->second.classDef.append(fnDef);
+		classIt->second.ClassDef.append(fnDef);
 
 		return pyModMethodName;
 	}
@@ -177,7 +176,6 @@ namespace Python
 		Python::_add_Func<idx>(pyModMethodName, fn, methodFlags, docs);
 	}
 
-
 	// This function generates a python class definition
 	template <class C>
 	static void Register_Class(std::string className) {
@@ -194,14 +192,14 @@ namespace Python
 		classDef += getTabs(1) + "def __call__(self): \n";
 		classDef += getTabs(2) + "return self._self \n";
 
-		ExposedClasses[std::type_index(typeid(C))] = ExposedClass(className, classDef, std::vector<PyObject *>());
+		ExposedClasses[std::type_index(typeid(C))] = ExposedClass(className, classDef);
 	}
 
 	// This will expose a specific C++ object instance as a Python
 	// object, giving it a pointer to the original object (which better stay live)
 	template <class C>
 	static void Expose_Object(C * instance, std::string name) {
-		// Make sure it's a vlid pointer
+		// Make sure it's a valid pointer
 		if (!instance)
 			return;
 
@@ -215,23 +213,25 @@ namespace Python
 
 		// Make a dummy variable, assign it to the ptr
 		PyObject * module = PyImport_ImportModule("__main__");
-		PyRun_SimpleString("ecsPtr = 0");
-		PyObject_SetAttrString(module, "ecsPtr", newPyObject);
+		PyRun_SimpleString("c_ptr = 0");
+		PyObject_SetAttrString(module, "c_ptr", newPyObject);
 
 		// Construct the python class
 		std::string pythonCall;
-		pythonCall.append(name).append(" = ").append(it->second.pyname).append("(ecsPtr)");
+		pythonCall.append(name).append(" = ").append(it->second.PyClassName).append("(c_ptr)");
 		PyRun_SimpleString(pythonCall.c_str());
 
 		// Get rid of the dummy var
-		PyRun_SimpleString("del ecsPtr");
+		PyRun_SimpleString("del c_ptr");
 
 		// decref and return
 		Py_DECREF(module);
 		Py_DECREF(newPyObject);
 
-		// Why does it need to be a pyObject?
-		PyObject * pyObject = static_cast<PyObject *>((void *)instance);
-		it->second.instances.push_back(pyObject);
+		// Right now I don't know why we should keep them
+        // in the future I may have a virtual C++ object
+        // whose destructor calls del on the pyobject
+        voidptr_t obj = static_cast<voidptr_t>(instance);
+        it->second.Instances.push_back({obj, name});
 	}
 }
