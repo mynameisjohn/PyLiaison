@@ -282,4 +282,10 @@ namespace Python {
 			RunCmd(classDef.c_str());
 		}
 	}
+
+	int RunFile(std::string file)
+	{
+		std::ifstream in(file);
+		RunCmd({ (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>() });
+	}
 }
