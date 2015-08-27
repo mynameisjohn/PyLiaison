@@ -34,7 +34,7 @@ namespace Python
 		std::string PyClassName;
         // The class definition
 		std::string ClassDef;
-		ExposedClass(std::string n = " ", std::string d = "", std::vector<Instance> v = {});
+		ExposedClass(std::string n = " ", std::string d = "", std::list<Instance> v = {});
 	};
 
 	// We need to keep the method definition's

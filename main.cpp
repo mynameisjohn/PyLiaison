@@ -64,6 +64,6 @@ int main() {
 
 	cout << "hello world" << endl;
 
-	cout << (Python::ExposedClasses.begin()->second.classDef) << endl;
+	cout << (Python::ExposedClasses.begin()->second.ClassDef) << endl;
 	return 0;
 }

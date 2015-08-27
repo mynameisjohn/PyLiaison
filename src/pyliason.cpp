@@ -230,10 +230,10 @@ namespace Python {
 	std::mutex CmdMutex;
 	PyObject * Py_ErrorObj;
 
-	ExposedClass::ExposedClass(std::string n , std::string d, std::vector<PyObject *> v) :
-		pyname(n), 
-		classDef(d),
-		instances(v)
+	ExposedClass::ExposedClass(std::string n , std::string d, std::list<Instance> v) :
+		PyClassName(n),
+		ClassDef(d),
+		Instances(v)
 	{}
 
 	size_t MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
@@ -278,7 +278,7 @@ namespace Python {
 		// Is now the time to declare all classes?
 		for (auto& exp_class : ExposedClasses)
 		{
-			const std::string& classDef = exp_class.second.classDef;
+			const std::string& classDef = exp_class.second.ClassDef;
 			RunCmd(classDef.c_str());
 		}
 	}
