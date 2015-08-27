@@ -18,10 +18,10 @@
 *
 */
 
-#include "pyliason.h"
-
 #include <algorithm>
 #include <fstream>
+
+#include "pyliason.h"
 
 namespace Python {
 	using std::runtime_error;
@@ -133,13 +133,7 @@ namespace Python {
 		PyObject_Print(obj, stdout, 0);
 	}
     
-    // TODO
-    // What's the difference between this and pywrapper::from_script
-    int RunFile(std::string fileName){
-        std::ifstream in(fileName);
-        std::string cmd((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        return RunCmd(cmd);
-    }
+
 
 	// Allocation methods
 
@@ -252,10 +246,10 @@ namespace Python {
 		PyMethodDef method;
 
 		if (docs.empty())
-			method = { MethodNames.back().c_str(), fnPtr, flags, NULL };
+			method = { namePtr, fnPtr, flags, NULL };
 		else {
 			MethodDocs.push_back(std::string(docs));
-			method = { MethodNames.back().c_str(), fnPtr, flags, MethodDocs.back().c_str() };
+            method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
 		}
 
 		v_Defs.insert(v_Defs.end() - 1, method);
@@ -286,6 +280,6 @@ namespace Python {
 	int RunFile(std::string file)
 	{
 		std::ifstream in(file);
-		RunCmd({ (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>() });
+		return RunCmd({ (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>() });
 	}
 }

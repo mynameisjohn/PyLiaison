@@ -1,11 +1,13 @@
-#include "pyl_misc.h"
-#include "pyl_classes.h"
+#pragma once
 
 #include <iostream>
 #include <typeindex>
 #include <string>
 
 #include <Python.h>
+
+#include "pyl_misc.h"
+#include "pyl_classes.h"
 
 // I don't know how to declare all these without
 // explicity specializing the templates... Unforunate

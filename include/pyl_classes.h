@@ -1,10 +1,11 @@
 #pragma once
 
-#include "pyl_Convert.h"
 
 #include <memory>
 
 #include <Python.h>
+
+#include "pyl_Convert.h"
 
 namespace Python
 {
@@ -28,12 +29,13 @@ namespace Python
             voidptr_t c_ptr;
             std::string pyname;
         };
-        // A list of exposed C++ object pointers
-		std::list<Instance> Instances;
         // The name of the python class
 		std::string PyClassName;
         // The class definition
 		std::string ClassDef;
+        // A list of exposed C++ object pointers
+        std::list<Instance> Instances;
+        
 		ExposedClass(std::string n = " ", std::string d = "", std::list<Instance> v = {});
 	};
 

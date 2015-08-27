@@ -8,9 +8,10 @@
 // This header contains the functions
 // used to expose functions and objects
 // to the python interpreter
-#include "pyl_expose.h"
 
 #include <mutex>
+
+#include "pyl_expose.h"
 
 namespace Python
 {
