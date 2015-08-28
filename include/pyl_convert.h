@@ -25,7 +25,7 @@ namespace Python
 		return true;
 	}
 
-	// This gets invoked on calls to member functions
+	// This gets invoked on calls to member functions, which require the instance ptr
     // It may be dangerous, since any pointer type will be interpreted
     // as a PyCObject, but so far it's been useful (do I need the reverse function?)
 	template<typename T>

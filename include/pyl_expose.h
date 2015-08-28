@@ -22,7 +22,7 @@ namespace Python
 	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
 
 	// The idea is to make a module where all your functions live
-	const std::string ModuleName = "spam";
+	const std::string ModuleName = "PyLiaison";
 
 	// Externs
 	extern std::map<std::type_index, ExposedClass> ExposedClasses;
@@ -114,32 +114,38 @@ namespace Python
 	template <class C>
 	std::string _getClassFunctionDef(std::string methodName, size_t numArgs = 0)
 	{
+        // Only expose member functions for familiar classes
 		auto classIt = ExposedClasses.find(typeid(C));
 		if (classIt == ExposedClasses.end())
 			return "Error creating class!";
 
+        // Foo::doSomething() becomes Foo_doSomething()
 		std::string pyModMethodName = classIt->second.PyClassName + "_" + methodName;
 
+        // We need to give the fn definition the correct number of arguments
 		std::string pyArgs;
 		const char diff = char(0x7A - 0x61); //'a' => 'z'
 		for (int i = 0; i < numArgs - 1; i++)
 		{
+            // preprend a '_' for every time we've looped a->z
 			std::string prePend;
 			for (int p = 0; p < (i / diff); p++)
 				prePend.append("_");
+            
+            // 'a' + i % ('z' - 'a')
 			char id = (char(0x61) + char(i % diff));
 			pyArgs.append(prePend);
 			pyArgs += id;
+            
+            // Don't put a comma on the last one
 			if (i + 2 < numArgs)
 				pyArgs.append(", ");
 		}
 
-		// I honestly can't explain most of these tabs. You'll need a good way if indenting
+        // The actual function definition
 		std::string fnDef;
 		fnDef += getTabs(1) + "def " + methodName + "( self, " + pyArgs + "):\n";
 		fnDef += getTabs(2) + "return " + pyModMethodName + "(self._self, " + pyArgs + ")\n";
-
-		std::cout << fnDef << std::endl;
 
 		classIt->second.ClassDef.append(fnDef);
 
@@ -184,7 +190,7 @@ namespace Python
 		if (ExposedClasses.find(typeid(C)) != ExposedClasses.end())
 			return;
 
-		// I believe four spaces are preferred to \t...
+        // The actual class definition, with constructor and () overload
 		std::string classDef;
 		classDef += "class " + className + ":\n";
 

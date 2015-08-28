@@ -25,7 +25,13 @@ namespace Python
     // as well as a list of exposed instances
 	struct ExposedClass
 	{
-        struct Instance{
+        // Instance struct
+        // Contains pointer to object
+        // and python var name
+        struct Instance
+        {
+            // Should I have a virtual destrutor?
+            //virtual ~Instance();
             voidptr_t c_ptr;
             std::string pyname;
         };
