@@ -205,6 +205,12 @@ namespace Python
 
 	// This will expose a specific C++ object instance as a Python
 	// object, giving it a pointer to the original object (which better stay live)
+    // TODO
+    // Make it so you can expose object in any module, not just main
+    // I wouldn't worry about resource management on the python end; if you really want something
+    // to go out of scope, limit it to a particular module; presumable destroying that module
+    // destroys the object. Assume C++ objects will stay live forever, or at least for the
+    // lifetime of the module
 	template <class C>
 	static void Expose_Object(C * instance, std::string name) {
 		// Make sure it's a valid pointer

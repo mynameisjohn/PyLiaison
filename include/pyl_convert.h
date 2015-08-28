@@ -150,6 +150,12 @@ namespace Python
 	// Creates a PyFloat from a float
 	PyObject *alloc_pyobject(float num);
 
+    // I guess this is kind of a catch-all for pointer types
+    template <typename T>
+    PyObject * alloc_pyobject(T * ptr){
+        return PyCObject_FromVoidPtr((void *)ptr, nullptr);
+    }
+    
 	// Creates a PyList from a std::vector
 	template<class T> PyObject *alloc_pyobject(const std::vector<T> &container) {
 		return alloc_list(container);

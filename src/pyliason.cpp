@@ -58,6 +58,10 @@ namespace Python {
 
 		PyList_Append(path, pwd.get());
 		/* We don't need that string value anymore, so deref it */
+        
+        // It's interesting that scripts are imported as modules
+        // Find out if you can leverage this to work with the
+        // PyLiaison module that you create
 		PyObject *py_ptr(PyImport_ImportModule(file_path.c_str()));
 		if (!py_ptr) {
 			print_error();
