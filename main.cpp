@@ -51,16 +51,16 @@ int main() {
 	// All exposed functions should be exposed before this call
 	Python::initialize();
 
-	Python::RunCmd("print testArgs(1,2)");
+	Python::RunCmd("print(testArgs(1,2))");
 
 	Python::Expose_Object(&g_Foo, "g_Foo");
-	Python::RunCmd("print g_Foo()");
-	Python::RunCmd("print g_Foo.getFloat(2)");
-	Python::RunCmd("print Foo_getFloat(g_Foo(), 2)");
+	Python::RunCmd("print(g_Foo())");
+	Python::RunCmd("print(g_Foo.getFloat(2))");
+	Python::RunCmd("print(Foo_getFloat(g_Foo(), 2))");
 	
-	Python::RunCmd("print g_Foo.testVoid1(2)");
-	Python::RunCmd("print g_Foo.testVoid2()");
-	Python::RunCmd("print g_Foo.testVoid3()");
+	Python::RunCmd("print(g_Foo.testVoid1(2))");
+	Python::RunCmd("print(g_Foo.testVoid2())");
+	Python::RunCmd("print(g_Foo.testVoid3())");
 
     // Your options for exposing objects within these things are to
     // a) pass the pointer and call the module version of the function directly

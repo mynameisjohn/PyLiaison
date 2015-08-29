@@ -19,9 +19,9 @@ namespace Python
 	// Convert a PyObject to any integral type.
 	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type = 0>
 	bool convert(PyObject *obj, T &val) {
-		if (!PyInt_Check(obj))
+		if (!PyLong_Check(obj))
 			return false;
-		val = PyInt_AsLong(obj);
+		val = PyLong_AsLong(obj);
 		return true;
 	}
 
@@ -30,7 +30,8 @@ namespace Python
     // as a PyCObject, but so far it's been useful (do I need the reverse function?)
 	template<typename T>
 	bool convert(PyObject * obj, T *& val) {
-		val = static_cast<T *>(PyCObject_AsVoidPtr(obj));
+		//if (!PyCapsule_CheckExact(obj))
+		val = static_cast<T *>(PyCapsule_GetPointer(obj, NULL));
 		return true;
 	}
 
@@ -112,10 +113,10 @@ namespace Python
 
 	// -------------- PyObject allocators ----------------
 
-	// Creates a PyObject from any integral type(gets converted to PyInt)
+	// Creates a PyObject from any integral type(gets converted to PyLong)
 	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type = 0>
 	PyObject *alloc_pyobject(T num) {
-		return PyInt_FromLong(num);
+		return PyLong_FromLong(num);
 	}
 
 	// Generic python list allocation
@@ -153,7 +154,7 @@ namespace Python
     // I guess this is kind of a catch-all for pointer types
     template <typename T>
     PyObject * alloc_pyobject(T * ptr){
-        return PyCObject_FromVoidPtr((void *)ptr, nullptr);
+        return PyCapsule_New((voidptr_t)ptr, NULL, NULL);
     }
     
 	// Creates a PyList from a std::vector

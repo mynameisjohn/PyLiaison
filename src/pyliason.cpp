@@ -54,8 +54,8 @@ namespace Python {
 			file_path = script_path;
 		if (file_path.rfind(".py") == file_path.size() - 3)
 			file_path = file_path.substr(0, file_path.size() - 3);
-		pyunique_ptr pwd(PyString_FromString(base_path.c_str()));
-
+		pyunique_ptr pwd(PyBytes_FromString(base_path.c_str()));
+		
 		PyList_Append(path, pwd.get());
 		/* We don't need that string value anymore, so deref it */
         
@@ -142,7 +142,7 @@ namespace Python {
 	// Allocation methods
 
 	PyObject *alloc_pyobject(const std::string &str) {
-		return PyString_FromString(str.c_str());
+		return PyBytes_FromString(str.c_str());
 	}
 
 	PyObject *alloc_pyobject(const std::vector<char> &val, size_t sz) {
@@ -154,7 +154,7 @@ namespace Python {
 	}
 
 	PyObject *alloc_pyobject(const char *cstr) {
-		return PyString_FromString(cstr);
+		return PyBytes_FromString(cstr);
 	}
 
 	PyObject *alloc_pyobject(bool value) {
@@ -171,7 +171,7 @@ namespace Python {
 	}
 
 	bool is_py_int(PyObject *obj) {
-		return PyInt_Check(obj);
+		return PyLong_Check(obj);
 	}
 
 	bool is_py_float(PyObject *obj) {
@@ -179,9 +179,9 @@ namespace Python {
 	}
 
 	bool convert(PyObject *obj, std::string &val) {
-		if (!PyString_Check(obj))
+		if (!PyBytes_Check(obj))
 			return false;
-		val = PyString_AsString(obj);
+		val = PyBytes_AsString(obj);
 		return true;
 	}
 
@@ -228,6 +228,10 @@ namespace Python {
 	std::mutex CmdMutex;
 	PyObject * Py_ErrorObj;
 
+	// These are the black sheep for now
+	PyModuleDef ModDef;
+	std::string ModDocs;
+
 	ExposedClass::ExposedClass(std::string n , std::string d, std::list<Instance> v) :
 		PyClassName(n),
 		ClassDef(d),
@@ -265,9 +269,20 @@ namespace Python {
 		// Is it fair to assume the method def is ready?
 		// The MethodDef contains all functions defined in C++ code,
 		// including those called into by exposed classes
-		PyObject * mod = Py_InitModule(ModuleName.c_str(), MethodDef.ptr());
-        
+
+		ModDef = PyModuleDef
+		{
+			PyModuleDef_HEAD_INIT,
+			ModuleName.c_str(),
+			ModDocs.c_str(),
+			-1,
+			MethodDef.ptr()
+		};
+		
+		PyObject * mod = PyModule_Create(&ModDef);
 		//if (mod == nullptr) ...
+
+
         std::string errName = ModuleName + ".error";
 		Py_ErrorObj = PyErr_NewException((char *)errName.c_str(), 0, 0);
 		Py_XINCREF(Py_ErrorObj);
@@ -279,6 +294,8 @@ namespace Python {
 			const std::string& classDef = exp_class.second.ClassDef;
 			RunCmd(classDef.c_str());
 		}
+
+		return mod;
 	}
 
 	int RunFile(std::string file)

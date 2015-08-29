@@ -31,7 +31,11 @@ namespace Python
 	extern MethodDefinitions MethodDef;
 	extern PyObject * Py_ErrorObj;
 
-    // Add a new method def fo the Method Definitions of the module
+	// These are the black sheep for now
+	extern PyModuleDef ModDef;
+	extern std::string ModDocs;
+   
+	// Add a new method def fo the Method Definitions of the module
 	template <size_t idx>
 	void _add_Method_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs)
 	{
@@ -222,8 +226,16 @@ namespace Python
 		if (it == ExposedClasses.end())
 			return;
 
-		// Make a PyCObject from the void * to the instance
-		PyObject* newPyObject = PyCObject_FromVoidPtr((void *)instance, nullptr);
+
+		// Right now I don't know why we should keep them
+		// in the future I may have a virtual C++ object
+		// whose destructor calls del on the pyobject
+		voidptr_t obj = static_cast<voidptr_t>(instance);
+		it->second.Instances.push_back({ obj, name });
+		ExposedClass::Instance& instRef = it->second.Instances.back();
+
+		// Make a PyCObject from the void * to the instance (I'd give it a name, but why?
+		PyObject* newPyObject = PyCapsule_New(instRef.c_ptr, NULL, NULL); // instRef.pyname.c_str());
 
 		// Make a dummy variable, assign it to the ptr
 		PyObject * module = PyImport_ImportModule("__main__");
@@ -241,11 +253,5 @@ namespace Python
 		// decref and return
 		Py_DECREF(module);
 		Py_DECREF(newPyObject);
-
-		// Right now I don't know why we should keep them
-        // in the future I may have a virtual C++ object
-        // whose destructor calls del on the pyobject
-        voidptr_t obj = static_cast<voidptr_t>(instance);
-        it->second.Instances.push_back({obj, name});
 	}
 }
