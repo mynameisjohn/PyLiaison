@@ -49,6 +49,8 @@ namespace Python
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 	}
 
+	// TODO add a function to add member definitions....
+
 	template <size_t idx, class C>
 	void _add_Mem_Fn_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs) 
 	{
@@ -135,77 +137,78 @@ namespace Python
 	// these functions generally call into their counterparts above, but the
 	// function definitions have to be appended to their corresponding class definition
 
-	template <class C>
-	std::string _getClassFunctionDef(std::string methodName, size_t numArgs = 0)
-	{
-        // Only expose member functions for familiar classes
-		auto classIt = ExposedClasses.find(typeid(C));
-		if (classIt == ExposedClasses.end())
-			return "Error creating class!";
+	// If I add these to the module, none of this is necessary
+	//template <class C>
+	//std::string _getClassFunctionDef(std::string methodName, size_t numArgs = 0)
+	//{
+ //       // Only expose member functions for familiar classes
+	//	auto classIt = ExposedClasses.find(typeid(C));
+	//	if (classIt == ExposedClasses.end())
+	//		return "Error creating class!";
 
-        // Foo::doSomething() becomes Foo_doSomething()
-		std::string pyModMethodName = classIt->second.PyClassName + "_" + methodName;
+ //       // Foo::doSomething() becomes Foo_doSomething()
+	//	std::string pyModMethodName = classIt->second.PyClassName + "_" + methodName;
 
-        // We need to give the fn definition the correct number of arguments
-		std::string pyArgs;
-		const char diff = char(0x7A - 0x61); //'a' => 'z'
-		for (int i = 0; i < numArgs - 1; i++)
-		{
-            // preprend a '_' for every time we've looped a->z
-			std::string prePend;
-			for (int p = 0; p < (i / diff); p++)
-				prePend.append("_");
-            
-            // 'a' + i % ('z' - 'a')
-			char id = (char(0x61) + char(i % diff));
-			pyArgs.append(prePend);
-			pyArgs += id;
-            
-            // Don't put a comma on the last one
-			if (i + 2 < numArgs)
-				pyArgs.append(", ");
-		}
+ //       // We need to give the fn definition the correct number of arguments
+	//	std::string pyArgs;
+	//	const char diff = char(0x7A - 0x61); //'a' => 'z'
+	//	for (int i = 0; i < numArgs - 1; i++)
+	//	{
+ //           // preprend a '_' for every time we've looped a->z
+	//		std::string prePend;
+	//		for (int p = 0; p < (i / diff); p++)
+	//			prePend.append("_");
+ //           
+ //           // 'a' + i % ('z' - 'a')
+	//		char id = (char(0x61) + char(i % diff));
+	//		pyArgs.append(prePend);
+	//		pyArgs += id;
+ //           
+ //           // Don't put a comma on the last one
+	//		if (i + 2 < numArgs)
+	//			pyArgs.append(", ");
+	//	}
 
-        // The actual function definition
-		std::string fnDef;
-		fnDef += getTabs(1) + "def " + methodName + "( self, " + pyArgs + "):\n";
-		fnDef += getTabs(2) + "return " + pyModMethodName + "(self._self, " + pyArgs + ")\n";
+ //       // The actual function definition
+	//	//std::string fnDef;
+	//	//fnDef += getTabs(1) + "def " + methodName + "( self, " + pyArgs + "):\n";
+	//	//fnDef += getTabs(2) + "return " + pyModMethodName + "(self._self, " + pyArgs + ")\n";
 
-		classIt->second.ClassDef.append(fnDef);
+	//	//classIt->second.ClassDef.append(fnDef);
 
-		return pyModMethodName;
-	}
+	//	return pyModMethodName;
+	//}
 
 	// Case 1
 	template <size_t idx, class C, typename R, typename ... Args>
 	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
 	{
-		std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
-		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
+		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 
 	// Case 2
 	template <size_t idx, class C, typename ... Args>
 	static void _add_Func(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
 	{
-		std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
-		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
+		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 
 	// Case 3
 	template <size_t idx, class C, typename R>
 	static void _add_Func(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
 	{
-		std::string pyModMethodName = _getClassFunctionDef<C>(methodName);
-		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
+		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 
 	// Case 4
 	template <size_t idx, class C>
 	static void _add_Func(std::string methodName, std::function<void()> fn, int methodFlags, std::string docs = "")
 	{
-		std::string pyModMethodName = _getClassFunctionDef<C>(methodName);
-		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
+		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 
 	// This function generates a python class definition
