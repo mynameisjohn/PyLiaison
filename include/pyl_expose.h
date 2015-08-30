@@ -49,6 +49,26 @@ namespace Python
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 	}
 
+	template <size_t idx, class C>
+	void _add_Mem_Fn_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs) 
+	{
+		auto it = ExposedClasses.find(typeid(C));
+		if (it == ExposedClasses.end())
+			return;
+
+		// We need to store these where they won't move
+		ExposedFunctions.push_back(pFn);
+
+		// now make the function pointer (TODO figure out these ids, or do something else)
+		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
+
+		// Add function
+		it->second.AddMemberFn(methodName, fnPtr, methodFlags,  docs);
+
+		// You can key the methodName string to a std::function
+		//MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
+	}
+
 	// Case 1: a straight up function that would look like : R fn( Args... ) { ... return R(); }
 	template <size_t idx, typename R, typename ... Args>
 	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
@@ -161,7 +181,7 @@ namespace Python
 	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
-		Python::_add_Func<idx>(pyModMethodName, fn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
 	}
 
 	// Case 2
@@ -169,7 +189,7 @@ namespace Python
 	static void _add_Func(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
-		Python::_add_Func<idx>(pyModMethodName, fn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
 	}
 
 	// Case 3
@@ -177,7 +197,7 @@ namespace Python
 	static void _add_Func(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
 	{
 		std::string pyModMethodName = _getClassFunctionDef<C>(methodName);
-		Python::_add_Func<idx>(pyModMethodName, fn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
 	}
 
 	// Case 4
@@ -185,7 +205,7 @@ namespace Python
 	static void _add_Func(std::string methodName, std::function<void()> fn, int methodFlags, std::string docs = "")
 	{
 		std::string pyModMethodName = _getClassFunctionDef<C>(methodName);
-		Python::_add_Func<idx>(pyModMethodName, fn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(pyModMethodName, fn, methodFlags, docs);
 	}
 
 	// This function generates a python class definition

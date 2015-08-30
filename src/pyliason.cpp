@@ -234,7 +234,7 @@ namespace Python {
 
 	ExposedClass::ExposedClass(std::string n , std::string d, std::list<Instance> v) :
 		PyClassName(n),
-		ClassDef(d),
+		//ClassDef(d),
 		Instances(v)
 	{}
 
@@ -264,6 +264,32 @@ namespace Python {
 		return v_Defs.size();
 	}
 
+	size_t MemberDefinitions::AddMember(std::string name, int type, size_t offset, int flags, std::string docs)
+	{
+		// If a method with this name has already been declared, throw an error
+		if (std::find(MemberNames.begin(), MemberNames.end(), name) != MemberNames.end())
+		{
+			// Alternatively, this could actually overwrite the pre-existing method. 
+			throw runtime_error("Error: Attempting to overwrite exisiting exposed python function");
+		}
+
+		// We need the names in a list so their references stay valid
+		MemberNames.push_back(name);
+		char * namePtr = (char *)MemberNames.back().c_str();
+
+		PyMemberDef member;
+
+		if (docs.empty())
+			member = { namePtr, type, offset, flags, NULL };
+		else {
+			MemberDocs.push_back(std::string(docs));
+			member = { namePtr, type, offset, flags, (char *)MemberDocs.back().c_str() };
+		}
+
+		v_Defs.insert(v_Defs.end() - 1, member);
+		return v_Defs.size();
+	}
+
 	PyMODINIT_FUNC _Mod_Init()
 	{
 		// Is it fair to assume the method def is ready?
@@ -282,18 +308,18 @@ namespace Python {
 		PyObject * mod = PyModule_Create(&ModDef);
 		//if (mod == nullptr) ...
 
-
-        std::string errName = ModuleName + ".error";
+      std::string errName = ModuleName + ".error";
 		Py_ErrorObj = PyErr_NewException((char *)errName.c_str(), 0, 0);
 		Py_XINCREF(Py_ErrorObj);
 		PyModule_AddObject(mod, "error", Py_ErrorObj);
 
 		// Is now the time to declare all classes?
-		for (auto& exp_class : ExposedClasses)
-		{
-			const std::string& classDef = exp_class.second.ClassDef;
-			RunCmd(classDef.c_str());
-		}
+		//for (auto& exp_class : ExposedClasses)
+		//{
+		//	PyModule_AddObject()
+		//	const std::string& classDef = exp_class.second.ClassDef;
+		//	RunCmd(classDef.c_str());
+		//}
 
 		return mod;
 	}

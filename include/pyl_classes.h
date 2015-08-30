@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <Python.h>
+#include <structmember.h>
 
 #include "pyl_Convert.h"
 
@@ -21,36 +22,14 @@ namespace Python
     // This feels gross
     using voidptr_t = void *;
 
-    // Defines an exposed class (which is not per instance)
-    // as well as a list of exposed instances
-	struct ExposedClass
-	{
-        // Instance struct
-        // Contains pointer to object
-        // and python var name
-        struct Instance
-        {
-            // Should I have a virtual destrutor?
-            //virtual ~Instance();
-            voidptr_t c_ptr;
-            std::string pyname;
-        };
-        // The name of the python class
-		std::string PyClassName;
-        // The class definition
-		std::string ClassDef;
-        // A list of exposed C++ object pointers
-        std::list<Instance> Instances;
-        
-		ExposedClass(std::string n = " ", std::string d = "", std::list<Instance> v = {});
-	};
-
 	// We need to keep the method definition's
 	// string name and docs stored somewhere,
 	// where their references are good, since they're char *
 	// Also note! std::vectors can move in memory,
 	// so when once this is exposed to python it shouldn't
 	// be modified
+	 
+	// TODO template this
 	struct MethodDefinitions
 	{
 		// Method defs must be contiguous
@@ -62,7 +41,7 @@ namespace Python
 		// By default add the "null terminator",
 		// all other methods are inserted before it
 		MethodDefinitions() :
-			v_Defs(1, { NULL, NULL, 0, })
+			v_Defs(1, { 0 })
 		{}
 
 		// Add method definitions before the null terminator
@@ -70,6 +49,63 @@ namespace Python
 
 		// pointer to the definitions (which can move!)
 		PyMethodDef * ptr() { return v_Defs.data(); }
+	};
+
+	struct MemberDefinitions
+	{
+		// Method defs must be contiguous
+		std::vector<PyMemberDef> v_Defs;
+
+		// These containers don't invalidate references
+		std::list<std::string> MemberNames, MemberDocs;
+
+		// By default add the "null terminator",
+		// all other methods are inserted before it
+		MemberDefinitions() :
+			v_Defs(1, { 0 })
+		{}
+
+		// Add method definitions before the null terminator
+		size_t AddMember(std::string name, int type, size_t offset,  int flags, std::string docs = "");
+
+		// pointer to the definitions (which can move!)
+		PyMemberDef * ptr() { return v_Defs.data(); }
+	};
+
+	// Defines an exposed class (which is not per instance)
+	// as well as a list of exposed instances
+	struct ExposedClass
+	{
+		// Instance struct
+		// Contains pointer to object
+		// and python var name
+		struct Instance
+		{
+			// Should I have a virtual destrutor?
+			//virtual ~Instance();
+			voidptr_t c_ptr;
+			std::string pyname;
+		};
+		// The name of the python class
+		std::string PyClassName;
+		// Each exposed class has a method definition
+		MethodDefinitions m_MethodDef;
+		// And members
+		MemberDefinitions m_MemberDef;
+		//// The class definition
+		//std::string ClassDef;
+		// A list of exposed C++ object pointers
+		std::list<Instance> Instances;
+
+		// Add method definitions before the null terminator
+		size_t AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
+			return m_MethodDef.AddMethod(name, fnPtr, flags, docs);
+		}
+		size_t AddMember(std::string name, int type, size_t offset, int flags, std::string doc = "") {
+			m_MemberDef.AddMember(name, type, offset, flags, doc);
+		}
+
+		ExposedClass(std::string n = " ", std::string d = "", std::list<Instance> v = {});
 	};
 
 	// TODO more doxygen!
