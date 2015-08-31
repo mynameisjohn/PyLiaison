@@ -10,6 +10,16 @@
 
 namespace Python
 {
+	// Every python module function looks like this
+	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
+
+	// Class __init__
+	using PyClsInitFunc = std::function<int(PyObject *, PyObject *, PyObject *)>;
+
+	// () operator (__call__)
+	using PyClsCallFunc = std::function<PyObject *(PyObject *, PyObject *, PyObject *)>;
+
+
 	// Deleter that calls Py_XDECREF on the PyObject parameter.
 	struct PyObjectDeleter {
 		void operator()(PyObject *obj) {
@@ -92,6 +102,11 @@ namespace Python
 		MethodDefinitions m_MethodDef;
 		// And members
 		MemberDefinitions m_MemberDef;
+		
+		// We need to keep this where it won't move
+		// (maps don't invalidate refs)
+		PyTypeObject m_TypeObject;
+		
 		//// The class definition
 		//std::string ClassDef;
 		// A list of exposed C++ object pointers
@@ -105,7 +120,7 @@ namespace Python
 			m_MemberDef.AddMember(name, type, offset, flags, doc);
 		}
 
-		ExposedClass(std::string n = " ", std::string d = "", std::list<Instance> v = {});
+		ExposedClass(std::string n = " ", PyTypeObject = { 0 }, std::list<Instance> v = {});
 	};
 
 	// TODO more doxygen!

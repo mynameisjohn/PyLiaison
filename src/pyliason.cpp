@@ -232,9 +232,9 @@ namespace Python {
 	PyModuleDef ModDef;
 	std::string ModDocs;
 
-	ExposedClass::ExposedClass(std::string n , std::string d, std::list<Instance> v) :
+	ExposedClass::ExposedClass(std::string n , PyTypeObject tObj, std::list<Instance> v) :
 		PyClassName(n),
-		//ClassDef(d),
+		m_TypeObject(tObj),
 		Instances(v)
 	{}
 

@@ -18,9 +18,6 @@
 
 namespace Python
 {
-	// Every python module function looks like this
-	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
-
 	// The idea is to make a module where all your functions live
 	const std::string ModuleName = "PyLiaison";
 
@@ -49,7 +46,15 @@ namespace Python
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 	}
 
-	// TODO add a function to add member definitions....
+	template<class C>
+	void _add_Member(std::string name, size_t offset, int flags, std::string docs) {
+		const int type = T_INT; // What do I do for other types? Make a map?
+		auto it = ExposedClasses.find(typeid(C));
+		if (it == ExposedClasses.end())
+			return;
+
+		it->second.AddMember(name, type, offset, flags, doc);
+	}
 
 	template <size_t idx, class C>
 	void _add_Mem_Fn_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs) 
@@ -210,24 +215,38 @@ namespace Python
 		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
-
+	
 	// This function generates a python class definition
 	template <class C>
 	static void Register_Class(std::string className) {
 		if (ExposedClasses.find(typeid(C)) != ExposedClasses.end())
 			return;
 
-        // The actual class definition, with constructor and () overload
-		std::string classDef;
-		classDef += "class " + className + ":\n";
+      // The actual class definition, with constructor and () overload
+		//std::string classDef;
+		//classDef += "class " + className + ":\n";
 
-		classDef += getTabs(1) + "def __init__(self, c_ptr): \n";
-		classDef += getTabs(2) + "self._self = c_ptr \n";
+		//classDef += getTabs(1) + "def __init__(self, c_ptr): \n";
+		//classDef += getTabs(2) + "self._self = c_ptr \n";
 
-		classDef += getTabs(1) + "def __call__(self): \n";
-		classDef += getTabs(2) + "return self._self \n";
+		//classDef += getTabs(1) + "def __call__(self): \n";
+		//classDef += getTabs(2) + "return self._self \n";
+		// By default you gotta make a constructor and a __call__ function... how?
 
-		ExposedClasses[std::type_index(typeid(C))] = ExposedClass(className, classDef);
+		PyTypeObject obj = { 0 };
+		
+		// We've got to get the void c ptr out of args and 
+		// store it in some member of self... so what is self?
+		// is it pointing to an instance of C? Not on my watch...
+		struct bs { void * c_pstr{ 0 }; };
+		PyClsInitFunc fn = [](PyObject * self, PyObject * args, PyObject * kwds) {
+			bs * bsPtr = static_cast<bs *>((void *)self);
+			//bsPtr->c_pstr = PyArg_
+			PyObject * cptr = PyCaps
+			return 0;
+		}
+
+		ExposedClasses[typeid(C)] = ExposedClass(className, classDef);
 	}
 
 	// This will expose a specific C++ object instance as a Python
