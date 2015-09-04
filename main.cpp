@@ -30,8 +30,8 @@ bool ExposeFuncs() {
 
 	Python::Register_Class<Foo, __LINE__>("Foo");
 
-	//std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
-	//Python::_add_Func<__LINE__, Foo>("getFloat", fooFn, METH_VARARGS, "Testing a member function");
+	std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
+	Python::_add_Func<__LINE__, Foo>("getFloat", fooFn, METH_VARARGS, "Testing a member function");
 
 	//std::function<void(Foo *, int)> fooFn2(&Foo::testVoid1);
 	//Python::_add_Func<__LINE__, Foo>("testVoid1", fooFn2, METH_VARARGS, "Testing a member function");

@@ -188,8 +188,15 @@ namespace Python
 	template <size_t idx, class C, typename R, typename ... Args>
 	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
 	{
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			std::tuple<Args...> tup;
+			convert(a, tup);
+			R rVal = call<R>(fn, tup);
+
+			return alloc_pyobject(rVal);
+		};
 		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
 
 	// Case 2
