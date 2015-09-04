@@ -250,17 +250,20 @@ namespace Python
 		// is it pointing to an instance of C? Not on my watch...
 		
 		// This is literally the constructor (literally)
-		
+		// (I don't know what I'm doing)
 		e_Class.m_Init = [](PyObject * self, PyObject * args, PyObject * kwds) {
 			// In the example the first arg isn't a PyObject *, but... idk man
 			MemberDefinitions::Pointer * bsPtr = static_cast<MemberDefinitions::Pointer *>((void *)self);
 			// The first argument is the capsule object
-			PyObject * c = PyTuple_GetItem(args, 0);
+			PyObject * c = PyTuple_GetItem(args, 0), * tmp(nullptr);
 			// Or at least it better be
 			if (c && PyCapsule_CheckExact(c)) 
 			{
+				tmp = bsPtr->capsule;
+				Py_IncRef(c);
 				// Grab the capsule and make it the member
 				bsPtr->capsule = c;
+				//Py_XDECREF(tmp);
 				// If we got it, set the actual object pointer
 	//			PyObject * tmp = bsPtr->capsule;
 //				Py_INCREF(c);
