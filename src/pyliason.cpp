@@ -55,13 +55,13 @@ namespace Python {
 		if (file_path.rfind(".py") == file_path.size() - 3)
 			file_path = file_path.substr(0, file_path.size() - 3);
 		pyunique_ptr pwd(PyBytes_FromString(base_path.c_str()));
-		
+
 		PyList_Append(path, pwd.get());
 		/* We don't need that string value anymore, so deref it */
-        
-        // It's interesting that scripts are imported as modules
-        // Find out if you can leverage this to work with the
-        // PyLiaison module that you create
+
+		  // It's interesting that scripts are imported as modules
+		  // Find out if you can leverage this to work with the
+		  // PyLiaison module that you create
 		PyObject *py_ptr(PyImport_ImportModule(file_path.c_str()));
 		if (!py_ptr) {
 			print_error();
@@ -103,22 +103,22 @@ namespace Python {
 	}
 
 	void initialize() {
-        // Finalize any previous stuff
-        Py_Finalize();
-        
-        // Call the _Mod_Init function when my module is imported
-        PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
-        
-        // Startup python
-			Py_Initialize();
-        
+		// Finalize any previous stuff
+		Py_Finalize();
 
-        // Import our module (this makes it a bit easier)
-			std::string importString = "from " + ModuleName + " import *";
-        
-        // It seems like this is a bad time to lock a mutex
-        // so just run it the old fashioned way
-        PyRun_SimpleString(importString.c_str());
+		// Call the _Mod_Init function when my module is imported
+		PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
+
+		// Startup python
+		Py_Initialize();
+
+
+		// Import our module (this makes it a bit easier)
+		std::string importString = "from " + ModuleName + " import *";
+
+		// It seems like this is a bad time to lock a mutex
+		// so just run it the old fashioned way
+		PyRun_SimpleString(importString.c_str());
 	}
 
 	void finalize() {
@@ -136,7 +136,7 @@ namespace Python {
 	void print_object(PyObject *obj) {
 		PyObject_Print(obj, stdout, 0);
 	}
-    
+
 
 
 	// Allocation methods
@@ -232,7 +232,7 @@ namespace Python {
 	PyModuleDef ModDef;
 	std::string ModDocs;
 
-	ExposedClass::ExposedClass(std::string n , PyTypeObject tObj, std::list<Instance> v) :
+	ExposedClass::ExposedClass(std::string n, PyTypeObject tObj, std::list<Instance> v) :
 		PyClassName(n),
 		m_TypeObject(tObj),
 		Instances(v)
@@ -246,7 +246,7 @@ namespace Python {
 			// Alternatively, this could actually overwrite the pre-existing method. 
 			throw runtime_error("Error: Attempting to overwrite exisiting exposed python function");
 		}
-			
+
 		// We need the names in a list so their references stay valid
 		MethodNames.push_back(name);
 		const char * namePtr = MethodNames.back().c_str();
@@ -257,14 +257,14 @@ namespace Python {
 			method = { namePtr, fnPtr, flags, NULL };
 		else {
 			MethodDocs.push_back(std::string(docs));
-            method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
+			method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
 		}
 
 		v_Defs.insert(v_Defs.end() - 1, method);
 		return v_Defs.size();
 	}
 
-	size_t MemberDefinitions::AddMember(std::string name, int type, size_t offset, int flags, std::string docs)
+	size_t MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
 	{
 		// If a method with this name has already been declared, throw an error
 		if (std::find(MemberNames.begin(), MemberNames.end(), name) != MemberNames.end())
@@ -278,7 +278,7 @@ namespace Python {
 		char * namePtr = (char *)MemberNames.back().c_str();
 
 		PyMemberDef member;
-
+		
 		if (docs.empty())
 			member = { namePtr, type, offset, flags, NULL };
 		else {
@@ -304,11 +304,11 @@ namespace Python {
 			-1,
 			MethodDef.ptr()
 		};
-		
+
 		PyObject * mod = PyModule_Create(&ModDef);
 		//if (mod == nullptr) ...
 
-      std::string errName = ModuleName + ".error";
+		std::string errName = ModuleName + ".error";
 		Py_ErrorObj = PyErr_NewException((char *)errName.c_str(), 0, 0);
 		Py_XINCREF(Py_ErrorObj);
 		PyModule_AddObject(mod, "error", Py_ErrorObj);

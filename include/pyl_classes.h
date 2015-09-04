@@ -76,7 +76,7 @@ namespace Python
 		{}
 
 		// Add method definitions before the null terminator
-		size_t AddMember(std::string name, int type, size_t offset,  int flags, std::string docs = "");
+		size_t AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
 
 		// pointer to the definitions (which can move!)
 		PyMemberDef * ptr() { return v_Defs.data(); }
@@ -116,7 +116,7 @@ namespace Python
 		size_t AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
 			return m_MethodDef.AddMethod(name, fnPtr, flags, docs);
 		}
-		size_t AddMember(std::string name, int type, size_t offset, int flags, std::string doc = "") {
+		size_t AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
 			m_MemberDef.AddMember(name, type, offset, flags, doc);
 		}
 

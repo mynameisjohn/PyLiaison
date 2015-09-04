@@ -57,7 +57,7 @@ namespace Python
 	}
 
 	template <size_t idx, class C>
-	void _add_Mem_Fn_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs) 
+	void _add_Mem_Fn_Def(std::string methodName, PyFunc pFn, int methodFlags, std::string docs)
 	{
 		auto it = ExposedClasses.find(typeid(C));
 		if (it == ExposedClasses.end())
@@ -242,11 +242,11 @@ namespace Python
 		PyClsInitFunc fn = [](PyObject * self, PyObject * args, PyObject * kwds) {
 			bs * bsPtr = static_cast<bs *>((void *)self);
 			//bsPtr->c_pstr = PyArg_
-			PyObject * cptr = PyCaps
+			//PyObject * cptr = PyCaps
 			return 0;
-		}
+		};
 
-		ExposedClasses[typeid(C)] = ExposedClass(className, classDef);
+		ExposedClasses[typeid(C)] = ExposedClass(className, obj);
 	}
 
 	// This will expose a specific C++ object instance as a Python
