@@ -264,6 +264,13 @@ namespace Python {
 		return v_Defs.size();
 	}
 
+	MemberDefinitions::MemberDefinitions()
+	{
+		MemberNames.push_back("c_ptr");
+		MemberDocs.push_back("pointer to a c object");
+		v_Defs = { { (char *)MemberNames.back().c_str(), T_OBJECT_EX, 0, 0, (char *)MemberDocs.back().c_str() }, { 0 } };
+	}
+
 	size_t MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
 	{
 		// If a method with this name has already been declared, throw an error

@@ -28,7 +28,7 @@ Foo g_Foo;
 bool ExposeFuncs() {
 	Py_Add_Func("testArgs", testArgs, "test adding two args");
 
-	Python::Register_Class<Foo>("Foo");
+	Python::Register_Class<Foo, __LINE__>("Foo");
 
 	//std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
 	//Python::_add_Func<__LINE__, Foo>("getFloat", fooFn, METH_VARARGS, "Testing a member function");

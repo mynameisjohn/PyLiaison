@@ -28,9 +28,9 @@ namespace Python
 	};
 	// unique_ptr that uses Py_XDECREF as the destructor function.
 	typedef std::unique_ptr<PyObject, PyObjectDeleter> pyunique_ptr;
-    
-    // This feels gross
-    using voidptr_t = void *;
+
+	// This feels gross
+	using voidptr_t = void *;
 
 	// We need to keep the method definition's
 	// string name and docs stored somewhere,
@@ -38,7 +38,7 @@ namespace Python
 	// Also note! std::vectors can move in memory,
 	// so when once this is exposed to python it shouldn't
 	// be modified
-	 
+
 	// TODO template this
 	struct MethodDefinitions
 	{
@@ -63,6 +63,10 @@ namespace Python
 
 	struct MemberDefinitions
 	{
+		struct Pointer {
+			PyObject * capsule{ nullptr };
+		};
+
 		// Method defs must be contiguous
 		std::vector<PyMemberDef> v_Defs;
 
@@ -71,9 +75,7 @@ namespace Python
 
 		// By default add the "null terminator",
 		// all other methods are inserted before it
-		MemberDefinitions() :
-			v_Defs(1, { 0 })
-		{}
+		MemberDefinitions();
 
 		// Add method definitions before the null terminator
 		size_t AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
@@ -102,11 +104,14 @@ namespace Python
 		MethodDefinitions m_MethodDef;
 		// And members
 		MemberDefinitions m_MemberDef;
-		
+
+		// These need to be stored somewhere
+		PyClsInitFunc m_Init;
+
 		// We need to keep this where it won't move
 		// (maps don't invalidate refs)
 		PyTypeObject m_TypeObject;
-		
+
 		//// The class definition
 		//std::string ClassDef;
 		// A list of exposed C++ object pointers

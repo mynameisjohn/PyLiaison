@@ -217,10 +217,12 @@ namespace Python
 	}
 	
 	// This function generates a python class definition
-	template <class C>
+	template <class C, size_t idx>
 	static void Register_Class(std::string className) {
 		if (ExposedClasses.find(typeid(C)) != ExposedClasses.end())
 			return;
+
+		ExposedClasses[typeid(C)] = ExposedClass(className);
 
       // The actual class definition, with constructor and () overload
 		//std::string classDef;
@@ -238,15 +240,30 @@ namespace Python
 		// We've got to get the void c ptr out of args and 
 		// store it in some member of self... so what is self?
 		// is it pointing to an instance of C? Not on my watch...
-		struct bs { void * c_pstr{ 0 }; };
-		PyClsInitFunc fn = [](PyObject * self, PyObject * args, PyObject * kwds) {
-			bs * bsPtr = static_cast<bs *>((void *)self);
-			//bsPtr->c_pstr = PyArg_
-			//PyObject * cptr = PyCaps
+		
+		// This is literally the constructor (literally)
+		ExposedClasses[typeid(C)].m_Init = [](PyObject * self, PyObject * args, PyObject * kwds) {
+			// In the example the first arg isn't a PyObject *, but... idk man
+			MemberDefinitions::Pointer * bsPtr = static_cast<MemberDefinitions::Pointer *>((void *)self);
+			// The first argument is the capsule object
+			PyObject * c = PyTuple_GetItem(args, 0);
+			// Or at least it better be
+			if (c && PyCapsule_CheckExact(c)) 
+			{
+				// If we got it, set the actual object pointer
+				PyObject * tmp = bsPtr->capsule;
+				Py_INCREF(c);
+				bsPtr->capsule = c;
+				Py_XDECREF(tmp);
+			}
+			//else ?
+
+			// TODO what about other members?
+			
 			return 0;
 		};
 
-		ExposedClasses[typeid(C)] = ExposedClass(className, obj);
+		ExposedClasses[typeid(C)].m_TypeObject.tp_init = get_fn_ptr<idx>(ExposedClasses[typeid(C)].m_Init);
 	}
 
 	// This will expose a specific C++ object instance as a Python
