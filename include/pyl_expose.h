@@ -259,11 +259,13 @@ namespace Python
 			// Or at least it better be
 			if (c && PyCapsule_CheckExact(c)) 
 			{
-				// If we got it, set the actual object pointer
-				PyObject * tmp = bsPtr->capsule;
-				Py_INCREF(c);
+				// Grab the capsule and make it the member
 				bsPtr->capsule = c;
-				Py_XDECREF(tmp);
+				// If we got it, set the actual object pointer
+	//			PyObject * tmp = bsPtr->capsule;
+//				Py_INCREF(c);
+	//			bsPtr->capsule = c;
+//				Py_XDECREF(tmp);
 			}
 			//else ?
 
@@ -273,13 +275,18 @@ namespace Python
 		};
 
 		auto& to = e_Class.m_TypeObject;
-		to.tp_init = get_fn_ptr<idx>(e_Class.m_Init);
-		to.tp_name = e_Class.PyClassName.c_str();
+		//to.tp_init = get_fn_ptr<idx>(e_Class.m_Init);
+		//to.tp_name = e_Class.PyClassName.c_str();
 		to.tp_basicsize = sizeof(MemberDefinitions::Pointer);
 		to.tp_flags = Py_TPFLAGS_DEFAULT;
 		to.tp_doc = 0; // TODO docs?
+		to.tp_new = PyType_GenericNew;
 
 		ExposedClasses[typeid(C)] = e_Class;
+		ExposedClasses[typeid(C)].m_TypeObject.tp_name = ExposedClasses[typeid(C)].PyClassName.c_str();
+		ExposedClasses[typeid(C)].m_TypeObject.tp_init = get_fn_ptr<idx>(ExposedClasses[typeid(C)].m_Init);
+		ExposedClasses[typeid(C)].m_TypeObject.tp_members = ExposedClasses[typeid(C)].m_MemberDef.ptr();
+		ExposedClasses[typeid(C)].m_TypeObject.tp_methods = ExposedClasses[typeid(C)].m_MethodDef.ptr();
 	}
 
 	// This will expose a specific C++ object instance as a Python
@@ -291,7 +298,7 @@ namespace Python
     // destroys the object. Assume C++ objects will stay live forever, or at least for the
     // lifetime of the module
 	template <class C>
-	static void Expose_Object(C * instance, std::string name) {
+	static void Expose_Object(C * instance, std::string name, PyObject * mod = nullptr) {
 		// Make sure it's a valid pointer
 		if (!instance)
 			return;
@@ -300,6 +307,12 @@ namespace Python
 		auto it = ExposedClasses.find(typeid(C));
 		if (it == ExposedClasses.end())
 			return;
+
+		// So what needs to happen is:
+		//		I need to create a pycapsule
+		//		I need to call C's __init__ with 
+		//		the capsule as an argument
+		//		
 
 
 		// Right now I don't know why we should keep them
@@ -312,10 +325,20 @@ namespace Python
 		// Make a PyCObject from the void * to the instance (I'd give it a name, but why?
 		PyObject* newPyObject = PyCapsule_New(instRef.c_ptr, NULL, NULL); // instRef.pyname.c_str());
 
-		// Make a dummy variable, assign it to the ptr
-		PyObject * module = PyImport_ImportModule("__main__");
-		PyRun_SimpleString("c_ptr = 0");
-		PyObject_SetAttrString(module, "c_ptr", newPyObject);
+		if (!mod) {
+			// If there isn't a specific module,
+			// then we can either add it to __main__
+			// or to the PyLiaison module
+			mod = PyImport_ImportModule(/*ModuleName.c_str()*/"__main__");
+		}
+
+		//PyModule_AddObject(mod, it->second.PyClassName.c_str(), (PyObject *)&(it->second.m_TypeObject));
+		
+
+		//// Make a dummy variable, assign it to the ptr
+		//PyObject * module = PyImport_ImportModule("__main__");
+		PyRun_SimpleString("c_ptr = None");
+		PyObject_SetAttrString(mod, "c_ptr", newPyObject);
 
 		// Construct the python class
 		std::string pythonCall;
@@ -325,8 +348,8 @@ namespace Python
 		// Get rid of the dummy var
 		PyRun_SimpleString("del c_ptr");
 
-		// decref and return
-		Py_DECREF(module);
-		Py_DECREF(newPyObject);
+		//// decref and return
+		//Py_DECREF(module);
+		//Py_DECREF(newPyObject);
 	}
 }

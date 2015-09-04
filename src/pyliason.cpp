@@ -321,8 +321,15 @@ namespace Python {
 		PyModule_AddObject(mod, "error", Py_ErrorObj);
 
 		// Is now the time to declare all classes?
-		//for (auto& exp_class : ExposedClasses)
-		//	PyModule_AddObject(mod, exp_class.second.PyClassName.c_str(), (PyObject *)&exp_class.second.m_TypeObject);
+		for (auto& exp_class : ExposedClasses) {
+			auto& tObj = exp_class.second.m_TypeObject;
+			tObj.tp_methods = exp_class.second.m_MethodDef.ptr();
+			
+			if (PyType_Ready(&(exp_class.second.m_TypeObject)) < 0)
+				assert(false);
+
+			PyModule_AddObject(mod, exp_class.second.PyClassName.c_str(), (PyObject *)&exp_class.second.m_TypeObject);
+		}
 
 		return mod;
 	}

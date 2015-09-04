@@ -54,6 +54,7 @@ int main() {
 	Python::RunCmd("print(testArgs(1,2))");
 
 	Python::Expose_Object(&g_Foo, "g_Foo");
+	Python::RunCmd("print(g_Foo)");
 	Python::RunCmd("print(g_Foo())");
 	Python::RunCmd("print(g_Foo.getFloat(2))");
 	Python::RunCmd("print(Foo_getFloat(g_Foo(), 2))");
