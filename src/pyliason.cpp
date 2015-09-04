@@ -322,11 +322,7 @@ namespace Python {
 
 		// Is now the time to declare all classes?
 		//for (auto& exp_class : ExposedClasses)
-		//{
-		//	PyModule_AddObject()
-		//	const std::string& classDef = exp_class.second.ClassDef;
-		//	RunCmd(classDef.c_str());
-		//}
+		//	PyModule_AddObject(mod, exp_class.second.PyClassName.c_str(), (PyObject *)&exp_class.second.m_TypeObject);
 
 		return mod;
 	}

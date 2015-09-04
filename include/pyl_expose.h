@@ -226,10 +226,11 @@ namespace Python
 	// This function generates a python class definition
 	template <class C, size_t idx>
 	static void Register_Class(std::string className) {
-		if (ExposedClasses.find(typeid(C)) != ExposedClasses.end())
+		auto it = ExposedClasses.find(typeid(C));
+		if (it != ExposedClasses.end())
 			return;
 
-		ExposedClasses[typeid(C)] = ExposedClass(className);
+		ExposedClass e_Class(className);
 
       // The actual class definition, with constructor and () overload
 		//std::string classDef;
@@ -242,14 +243,15 @@ namespace Python
 		//classDef += getTabs(2) + "return self._self \n";
 		// By default you gotta make a constructor and a __call__ function... how?
 
-		PyTypeObject obj = { 0 };
+		//PyTypeObject obj = { PyVarObject_HEAD_INIT(NULL, 0) };
 		
 		// We've got to get the void c ptr out of args and 
 		// store it in some member of self... so what is self?
 		// is it pointing to an instance of C? Not on my watch...
 		
 		// This is literally the constructor (literally)
-		ExposedClasses[typeid(C)].m_Init = [](PyObject * self, PyObject * args, PyObject * kwds) {
+		
+		e_Class.m_Init = [](PyObject * self, PyObject * args, PyObject * kwds) {
 			// In the example the first arg isn't a PyObject *, but... idk man
 			MemberDefinitions::Pointer * bsPtr = static_cast<MemberDefinitions::Pointer *>((void *)self);
 			// The first argument is the capsule object
@@ -270,7 +272,14 @@ namespace Python
 			return 0;
 		};
 
-		ExposedClasses[typeid(C)].m_TypeObject.tp_init = get_fn_ptr<idx>(ExposedClasses[typeid(C)].m_Init);
+		auto& to = e_Class.m_TypeObject;
+		to.tp_init = get_fn_ptr<idx>(e_Class.m_Init);
+		to.tp_name = e_Class.PyClassName.c_str();
+		to.tp_basicsize = sizeof(MemberDefinitions::Pointer);
+		to.tp_flags = Py_TPFLAGS_DEFAULT;
+		to.tp_doc = 0; // TODO docs?
+
+		ExposedClasses[typeid(C)] = e_Class;
 	}
 
 	// This will expose a specific C++ object instance as a Python
