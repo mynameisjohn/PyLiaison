@@ -164,23 +164,40 @@ namespace Python
 
 	// Case 2
 	template <size_t idx, class C, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			std::tuple<Args...> tup;
+			convert(a, tup); // Can I prepend the pointer to this tuple?
+			call_C<C, void>(fn, _getCapsulePtr<C>(s), tup);
+
+			return;
+		};
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
 
 	// Case 3
 	template <size_t idx, class C, typename R>
-	static void _add_Func(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
 	{
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			R rVal = call_C<C, R>(fn, _getCapsulePtr<C>(s));
+
+			return alloc_pyobject(rVal);
+		};
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
 
 	// Case 4
 	template <size_t idx, class C>
-	static void _add_Func(std::string methodName, std::function<void()> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
 	{
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			call_C<C, R>(fn, _getCapsulePtr<C>(s));
+
+			return;
+		};
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
 	
 	// This function generates a python class definition

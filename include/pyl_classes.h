@@ -13,17 +13,6 @@ namespace Python
 	// Every python module function looks like this
 	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
 
-	// Class __init__
-	// PyClsInitFunc = std::function<int(PyObject *, PyObject *, PyObject *)>;
-
-	// () operator (__call__)
-	using PyClsCallFunc = std::function<PyObject *(PyObject *, PyObject *, PyObject *)>;
-
-	// We only need one instance of the above, shared by exposed objects
-	//extern PyClsInitFunc PyClsInit;
-	extern PyClsCallFunc PyClsCall;
-
-
 	// Deleter that calls Py_XDECREF on the PyObject parameter.
 	struct PyObjectDeleter {
 		void operator()(PyObject *obj) {

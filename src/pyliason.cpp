@@ -255,7 +255,10 @@ namespace Python {
 		return 0;
 	};
 
-	PyClsCallFunc PyClsCall;
+	static PyObject * PyClsCall(PyObject * co, PyObject * args, PyObject * kw)
+	{
+		return static_cast<GenericPyClass *>((voidptr_t)co)->capsule;
+	}
 
 	// These are the black sheep for now
 	PyModuleDef ModDef;
@@ -270,6 +273,7 @@ namespace Python {
 		m_TypeObject.ob_base = PyVarObject_HEAD_INIT(NULL, 0)
 		m_TypeObject.tp_name = PyClassName.c_str();
 		m_TypeObject.tp_init = (initproc)PyClsInit;
+		m_TypeObject.tp_call = (ternaryfunc)PyClsCall;
 		m_TypeObject.tp_new = PyType_GenericNew;
 		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT;
 		m_TypeObject.tp_basicsize = sizeof(GenericPyClass);
