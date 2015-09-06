@@ -47,6 +47,40 @@ namespace Python
 		return detail::call_impl<R, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call(f, std::forward<Tuple>(t));
 	}
 
+	// The above for classes, which I wish I didn't have to do
+
+	// This was stolen from stack overflow user irdjan
+	// it lets functions be called directly with a std::tuple
+
+	// implementation details, users never invoke these directly
+	namespace detail
+	{
+		template <class C, typename R, typename F, typename Tuple, bool Done, int Total, int... N>
+		struct call_impl_C
+		{
+			static R call_C(F f, C * c, Tuple && t)
+			{
+				return call_impl_C<C, R, F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call_C(f, c, std::forward<Tuple>(t));
+			}
+		};
+
+		template <typename C, typename R, typename F, typename Tuple, int Total, int... N>
+		struct call_impl_C<C, R, F, Tuple, true, Total, N...>
+		{
+			static R call_C(F f, C * c, Tuple && t)
+			{
+				return f(c, std::get<N>(std::forward<Tuple>(t))...);
+			}
+		};
+	}
+
+	// user invokes this
+	template <typename C, typename R, typename F, typename Tuple>
+	R call_C(F f, C * c, Tuple && t)
+	{
+		typedef typename std::decay<Tuple>::type ttype;
+		return detail::call_impl_C<C, R, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call_C(f, c,std::forward<Tuple>(t));
+	}
     
     // This was also stolen from stack overflow
     // but I'm hoping to phase it out. It allows me to expose

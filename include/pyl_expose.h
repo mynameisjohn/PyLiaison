@@ -138,64 +138,19 @@ namespace Python
 		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
 	}
 
-	// Now the same as above, except for class member functions
-	// these functions generally call into their counterparts above, but the
-	// function definitions have to be appended to their corresponding class definition
-
-	// If I add these to the module, none of this is necessary
-	//template <class C>
-	//std::string _getClassFunctionDef(std::string methodName, size_t numArgs = 0)
-	//{
- //       // Only expose member functions for familiar classes
-	//	auto classIt = ExposedClasses.find(typeid(C));
-	//	if (classIt == ExposedClasses.end())
-	//		return "Error creating class!";
-
- //       // Foo::doSomething() becomes Foo_doSomething()
-	//	std::string pyModMethodName = classIt->second.PyClassName + "_" + methodName;
-
- //       // We need to give the fn definition the correct number of arguments
-	//	std::string pyArgs;
-	//	const char diff = char(0x7A - 0x61); //'a' => 'z'
-	//	for (int i = 0; i < numArgs - 1; i++)
-	//	{
- //           // preprend a '_' for every time we've looped a->z
-	//		std::string prePend;
-	//		for (int p = 0; p < (i / diff); p++)
-	//			prePend.append("_");
- //           
- //           // 'a' + i % ('z' - 'a')
-	//		char id = (char(0x61) + char(i % diff));
-	//		pyArgs.append(prePend);
-	//		pyArgs += id;
- //           
- //           // Don't put a comma on the last one
-	//		if (i + 2 < numArgs)
-	//			pyArgs.append(", ");
-	//	}
-
- //       // The actual function definition
-	//	//std::string fnDef;
-	//	//fnDef += getTabs(1) + "def " + methodName + "( self, " + pyArgs + "):\n";
-	//	//fnDef += getTabs(2) + "return " + pyModMethodName + "(self._self, " + pyArgs + ")\n";
-
-	//	//classIt->second.ClassDef.append(fnDef);
-
-	//	return pyModMethodName;
-	//}
-
 	// Case 1
 	template <size_t idx, class C, typename R, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
 			convert(a, tup);
-			R rVal = call<R>(fn, tup);
+			std::tuple<C *, Args...> b;
+			voidptr_t obj = PyCapsule_GetPointer(static_cast<MemberDefinitions::Pointer *>((voidptr_t)s)->capsule, NULL);
+			R rVal = call_C<C, R>(fn, (C *)obj, tup);
 
 			return alloc_pyobject(rVal);
 		};
-		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
 
@@ -203,7 +158,6 @@ namespace Python
 	template <size_t idx, class C, typename ... Args>
 	static void _add_Func(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
 	{
-		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 
@@ -211,7 +165,6 @@ namespace Python
 	template <size_t idx, class C, typename R>
 	static void _add_Func(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
 	{
-		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 
@@ -219,7 +172,6 @@ namespace Python
 	template <size_t idx, class C>
 	static void _add_Func(std::string methodName, std::function<void()> fn, int methodFlags, std::string docs = "")
 	{
-		//std::string pyModMethodName = _getClassFunctionDef<C>(methodName, sizeof...(Args));
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, fn, methodFlags, docs);
 	}
 	
@@ -231,19 +183,6 @@ namespace Python
 			return;
 
 		ExposedClass e_Class(className);
-
-      // The actual class definition, with constructor and () overload
-		//std::string classDef;
-		//classDef += "class " + className + ":\n";
-
-		//classDef += getTabs(1) + "def __init__(self, c_ptr): \n";
-		//classDef += getTabs(2) + "self._self = c_ptr \n";
-
-		//classDef += getTabs(1) + "def __call__(self): \n";
-		//classDef += getTabs(2) + "return self._self \n";
-		// By default you gotta make a constructor and a __call__ function... how?
-
-		//PyTypeObject obj = { PyVarObject_HEAD_INIT(NULL, 0) };
 		
 		// We've got to get the void c ptr out of args and 
 		// store it in some member of self... so what is self?
@@ -259,16 +198,12 @@ namespace Python
 			// Or at least it better be
 			if (c && PyCapsule_CheckExact(c)) 
 			{
+				auto test = PyCapsule_GetPointer(c, NULL);
 				tmp = bsPtr->capsule;
-				Py_IncRef(c);
-				// Grab the capsule and make it the member
+
+				Py_INCREF(c);
 				bsPtr->capsule = c;
-				//Py_XDECREF(tmp);
-				// If we got it, set the actual object pointer
-	//			PyObject * tmp = bsPtr->capsule;
-//				Py_INCREF(c);
-	//			bsPtr->capsule = c;
-//				Py_XDECREF(tmp);
+				Py_INCREF(args);
 			}
 			//else ?
 
@@ -288,8 +223,8 @@ namespace Python
 		ExposedClasses[typeid(C)] = e_Class;
 		ExposedClasses[typeid(C)].m_TypeObject.tp_name = ExposedClasses[typeid(C)].PyClassName.c_str();
 		ExposedClasses[typeid(C)].m_TypeObject.tp_init = get_fn_ptr<idx>(ExposedClasses[typeid(C)].m_Init);
-		ExposedClasses[typeid(C)].m_TypeObject.tp_members = ExposedClasses[typeid(C)].m_MemberDef.ptr();
-		ExposedClasses[typeid(C)].m_TypeObject.tp_methods = ExposedClasses[typeid(C)].m_MethodDef.ptr();
+		//[typeid(C)].m_TypeObject.tp_members = ExposedClasses[typeid(C)].m_MemberDef.ptr();
+		//ExposedClasses[typeid(C)].m_TypeObject.tp_methods = ExposedClasses[typeid(C)].m_MethodDef.ptr();
 	}
 
 	// This will expose a specific C++ object instance as a Python
@@ -332,15 +267,13 @@ namespace Python
 			// If there isn't a specific module,
 			// then we can either add it to __main__
 			// or to the PyLiaison module
-			mod = PyImport_ImportModule(/*ModuleName.c_str()*/"__main__");
+			mod = PyImport_ImportModule("__main__");
 		}
-
-		//PyModule_AddObject(mod, it->second.PyClassName.c_str(), (PyObject *)&(it->second.m_TypeObject));
 		
 
 		//// Make a dummy variable, assign it to the ptr
 		//PyObject * module = PyImport_ImportModule("__main__");
-		PyRun_SimpleString("c_ptr = None");
+		PyRun_SimpleString("c_ptr = 0");
 		PyObject_SetAttrString(mod, "c_ptr", newPyObject);
 
 		// Construct the python class
@@ -352,7 +285,7 @@ namespace Python
 		PyRun_SimpleString("del c_ptr");
 
 		//// decref and return
-		//Py_DECREF(module);
-		//Py_DECREF(newPyObject);
+		Py_DECREF(mod);
+		Py_DECREF(newPyObject);
 	}
 }
