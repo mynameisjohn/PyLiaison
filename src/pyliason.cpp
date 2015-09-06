@@ -399,4 +399,13 @@ namespace Python {
 		std::ifstream in(file);
 		return RunCmd({ (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>() });
 	}
+
+	int GetTotalRefCount()
+	{
+		PyObject* refCount = PyObject_CallObject(PySys_GetObject((char*)"gettotalrefcount"), NULL);
+		if (!refCount) return -1;
+		int ret = _PyLong_AsInt(refCount);
+		Py_DECREF(refCount);
+		return ret;
+	}
 }

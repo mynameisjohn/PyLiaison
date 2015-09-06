@@ -174,4 +174,6 @@ namespace Python
 
 	// TODO
 	//rewrite the above for class member functions
+
+	int GetTotalRefCount();
 }

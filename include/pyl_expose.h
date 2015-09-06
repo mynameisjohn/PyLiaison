@@ -150,7 +150,7 @@ namespace Python
 
 	// Case 1
 	template <size_t idx, class C, typename R, typename ... Args>
-	static void _add_Mem_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -164,7 +164,7 @@ namespace Python
 
 	// Case 2
 	template <size_t idx, class C, typename ... Args>
-	static void _add_Mem_Func(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -179,7 +179,7 @@ namespace Python
 
 	// Case 3
 	template <size_t idx, class C, typename R>
-	static void _add_Mem_Func(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			R rVal = call_C<C, R>(fn, _getCapsulePtr<C>(s));
@@ -191,7 +191,7 @@ namespace Python
 
 	// Case 4
 	template <size_t idx, class C>
-	static void _add_Mem_Func(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			callv_C<C>(fn, _getCapsulePtr<C>(s));
@@ -213,12 +213,6 @@ namespace Python
 
 	// This will expose a specific C++ object instance as a Python
 	// object, giving it a pointer to the original object (which better stay live)
-    // TODO
-    // Make it so you can expose object in any module, not just main
-    // I wouldn't worry about resource management on the python end; if you really want something
-    // to go out of scope, limit it to a particular module; presumable destroying that module
-    // destroys the object. Assume C++ objects will stay live forever, or at least for the
-    // lifetime of the module
 	template <class C>
 	static void Expose_Object(C * instance, std::string name, PyObject * mod = nullptr) {
 		// Make sure it's a valid pointer
@@ -230,37 +224,28 @@ namespace Python
 		if (it == ExposedClasses.end())
 			return;
 
-		// So what needs to happen is:
-		//		I need to create a pycapsule
-		//		I need to call C's __init__ with 
-		//		the capsule as an argument
-		//		
-
-
 		// Right now I don't know why we should keep them
-		// in the future I may have a virtual C++ object
-		// whose destructor calls del on the pyobject
 		voidptr_t obj = static_cast<voidptr_t>(instance);
 		it->second.Instances.push_back({ obj, name });
 		ExposedClass::Instance& instRef = it->second.Instances.back();
 
-		// Make a PyCObject from the void * to the instance (I'd give it a name, but why?
-		PyObject* newPyObject = PyCapsule_New(instRef.c_ptr, NULL, NULL); // instRef.pyname.c_str());
-
+		// If a module wasn't specified, just do main
 		if (!mod) {
 			// If there isn't a specific module,
 			// then we can either add it to __main__
 			// or to the PyLiaison module
 			mod = PyImport_ImportModule("__main__");
 		}
-		
 
-		//// Make a dummy variable, assign it to the ptr
+		// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
+		PyObject* newPyObject = PyCapsule_New(instRef.c_ptr, NULL, NULL); // instRef.pyname.c_str());
+
+		// Make a dummy variable, assign it to the ptr
 		//PyObject * module = PyImport_ImportModule("__main__");
 		PyRun_SimpleString("c_ptr = 0");
 		PyObject_SetAttrString(mod, "c_ptr", newPyObject);
 
-		// Construct the python class
+		// Construct the python class, using the capsule object as a ctor argument
 		std::string pythonCall;
 		pythonCall.append(name).append(" = ").append(it->second.PyClassName).append("(c_ptr)");
 		PyRun_SimpleString(pythonCall.c_str());
@@ -268,7 +253,7 @@ namespace Python
 		// Get rid of the dummy var
 		PyRun_SimpleString("del c_ptr");
 
-		//// decref and return
+		// decref and return
 		Py_DECREF(mod);
 		Py_DECREF(newPyObject);
 	}
