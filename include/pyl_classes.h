@@ -14,10 +14,14 @@ namespace Python
 	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
 
 	// Class __init__
-	using PyClsInitFunc = std::function<int(PyObject *, PyObject *, PyObject *)>;
+	// PyClsInitFunc = std::function<int(PyObject *, PyObject *, PyObject *)>;
 
 	// () operator (__call__)
 	using PyClsCallFunc = std::function<PyObject *(PyObject *, PyObject *, PyObject *)>;
+
+	// We only need one instance of the above, shared by exposed objects
+	//extern PyClsInitFunc PyClsInit;
+	extern PyClsCallFunc PyClsCall;
 
 
 	// Deleter that calls Py_XDECREF on the PyObject parameter.
@@ -61,12 +65,13 @@ namespace Python
 		PyMethodDef * ptr() { return v_Defs.data(); }
 	};
 
+	struct GenericPyClass
+	{
+		PyObject * capsule{ nullptr };
+	};
+
 	struct MemberDefinitions
 	{
-		struct Pointer {
-			PyObject * capsule{ nullptr };
-		};
-
 		// Method defs must be contiguous
 		std::vector<PyMemberDef> v_Defs;
 
@@ -93,11 +98,12 @@ namespace Python
 		// and python var name
 		struct Instance
 		{
-			// Should I have a virtual destrutor?
-			//virtual ~Instance();
 			voidptr_t c_ptr;
 			std::string pyname;
 		};
+		// A list of exposed C++ object pointers
+		std::list<Instance> Instances;
+
 		// The name of the python class
 		std::string PyClassName;
 		// Each exposed class has a method definition
@@ -105,17 +111,13 @@ namespace Python
 		// And members
 		MemberDefinitions m_MemberDef;
 
-		// These need to be stored somewhere
-		PyClsInitFunc m_Init;
-
 		// We need to keep this where it won't move
 		// (maps don't invalidate refs)
 		PyTypeObject m_TypeObject;
 
-		//// The class definition
-		//std::string ClassDef;
-		// A list of exposed C++ object pointers
-		std::list<Instance> Instances;
+		void Prepare();
+		PyTypeObject& to() { return m_TypeObject; }
+
 
 		// Add method definitions before the null terminator
 		size_t AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {

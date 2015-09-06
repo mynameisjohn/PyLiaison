@@ -112,6 +112,9 @@ namespace Python {
 		// Startup python
 		Py_Initialize();
 
+		// Lock down any definitions
+		for (auto& e_Class : ExposedClasses)
+			e_Class.second.Prepare();
 
 		// Import our module (this makes it a bit easier)
 		std::string importString = "from " + ModuleName + " import *";
@@ -228,6 +231,32 @@ namespace Python {
 	std::mutex CmdMutex;
 	PyObject * Py_ErrorObj;
 
+	// We only need one instance of the above, shared by exposed objects
+	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
+	{
+		// In the example the first arg isn't a PyObject *, but... idk man
+		GenericPyClass * bsPtr = static_cast<GenericPyClass *>((void *)self);
+		// The first argument is the capsule object
+		PyObject * c = PyTuple_GetItem(args, 0), *tmp(nullptr);
+		// Or at least it better be
+		if (c && PyCapsule_CheckExact(c))
+		{
+			auto test = PyCapsule_GetPointer(c, NULL);
+			tmp = bsPtr->capsule;
+
+			Py_INCREF(c);
+			bsPtr->capsule = c;
+			Py_INCREF(args);
+		}
+		//else ?
+
+		// TODO what about other members?
+
+		return 0;
+	};
+
+	PyClsCallFunc PyClsCall;
+
 	// These are the black sheep for now
 	PyModuleDef ModDef;
 	std::string ModDocs;
@@ -236,7 +265,23 @@ namespace Python {
 		PyClassName(n),
 		m_TypeObject(tObj),
 		Instances(v)
-	{}
+	{
+		// Take care of this now
+		m_TypeObject.ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+		m_TypeObject.tp_name = PyClassName.c_str();
+		m_TypeObject.tp_init = (initproc)PyClsInit;
+		m_TypeObject.tp_new = PyType_GenericNew;
+		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT;
+		m_TypeObject.tp_basicsize = sizeof(GenericPyClass);
+	}
+
+	// This has to happen at a time when these
+	// definitions will no longer move
+	void ExposedClass::Prepare()
+	{
+		m_TypeObject.tp_members = m_MemberDef.ptr();
+		m_TypeObject.tp_methods = m_MethodDef.ptr();
+	}
 
 	size_t MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
 	{

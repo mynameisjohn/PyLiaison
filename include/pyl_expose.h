@@ -116,7 +116,6 @@ namespace Python
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			R rVal = fn();
-
 			return alloc_pyobject(rVal);
 		};
 
@@ -130,7 +129,6 @@ namespace Python
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			fn();
-
 			Py_INCREF(Py_None);
 			return Py_None;
 		};
@@ -146,7 +144,7 @@ namespace Python
 			std::tuple<Args...> tup;
 			convert(a, tup);
 			std::tuple<C *, Args...> b;
-			voidptr_t obj = PyCapsule_GetPointer(static_cast<MemberDefinitions::Pointer *>((voidptr_t)s)->capsule, NULL);
+			voidptr_t obj = PyCapsule_GetPointer(static_cast<GenericPyClass *>((voidptr_t)s)->capsule, NULL);
 			R rVal = call_C<C, R>(fn, (C *)obj, tup);
 
 			return alloc_pyobject(rVal);
@@ -181,50 +179,7 @@ namespace Python
 		auto it = ExposedClasses.find(typeid(C));
 		if (it != ExposedClasses.end())
 			return;
-
-		ExposedClass e_Class(className);
-		
-		// We've got to get the void c ptr out of args and 
-		// store it in some member of self... so what is self?
-		// is it pointing to an instance of C? Not on my watch...
-		
-		// This is literally the constructor (literally)
-		// (I don't know what I'm doing)
-		e_Class.m_Init = [](PyObject * self, PyObject * args, PyObject * kwds) {
-			// In the example the first arg isn't a PyObject *, but... idk man
-			MemberDefinitions::Pointer * bsPtr = static_cast<MemberDefinitions::Pointer *>((void *)self);
-			// The first argument is the capsule object
-			PyObject * c = PyTuple_GetItem(args, 0), * tmp(nullptr);
-			// Or at least it better be
-			if (c && PyCapsule_CheckExact(c)) 
-			{
-				auto test = PyCapsule_GetPointer(c, NULL);
-				tmp = bsPtr->capsule;
-
-				Py_INCREF(c);
-				bsPtr->capsule = c;
-				Py_INCREF(args);
-			}
-			//else ?
-
-			// TODO what about other members?
-			
-			return 0;
-		};
-
-		auto& to = e_Class.m_TypeObject;
-		//to.tp_init = get_fn_ptr<idx>(e_Class.m_Init);
-		//to.tp_name = e_Class.PyClassName.c_str();
-		to.tp_basicsize = sizeof(MemberDefinitions::Pointer);
-		to.tp_flags = Py_TPFLAGS_DEFAULT;
-		to.tp_doc = 0; // TODO docs?
-		to.tp_new = PyType_GenericNew;
-
-		ExposedClasses[typeid(C)] = e_Class;
-		ExposedClasses[typeid(C)].m_TypeObject.tp_name = ExposedClasses[typeid(C)].PyClassName.c_str();
-		ExposedClasses[typeid(C)].m_TypeObject.tp_init = get_fn_ptr<idx>(ExposedClasses[typeid(C)].m_Init);
-		//[typeid(C)].m_TypeObject.tp_members = ExposedClasses[typeid(C)].m_MemberDef.ptr();
-		//ExposedClasses[typeid(C)].m_TypeObject.tp_methods = ExposedClasses[typeid(C)].m_MethodDef.ptr();
+		ExposedClasses.emplace(typeid(C), className);
 	}
 
 	// This will expose a specific C++ object instance as a Python
