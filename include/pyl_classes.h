@@ -36,6 +36,12 @@ namespace Python
 	// This feels gross
 	using voidptr_t = void *;
 
+	// All exposed objects inherit from this
+	struct GenericPyClass
+	{
+		PyObject * capsule{ nullptr };
+	};
+
 	// We need to keep the method definition's
 	// string name and docs stored somewhere,
 	// where their references are good, since they're char *
@@ -43,50 +49,39 @@ namespace Python
 	// so when once this is exposed to python it shouldn't
 	// be modified
 
-	// TODO template this
-	struct MethodDefinitions
+	template <typename D>
+	struct _NullTermBuf
 	{
-		// Method defs must be contiguous
-		std::vector<PyMethodDef> v_Defs;
+		std::vector<D> v_Data;
+		D * Ptr() { return v_Data.data(); }
+		_NullTermBuf() :v_Data({ { 0 } }) {}
+	protected:
+		size_t _insert(D data) { v_Data.insert(v_Data.end() - 1, data); return v_Data.size(); }
+	};
 
+	// TODO template this
+	struct MethodDefinitions : public _NullTermBuf<PyMethodDef>
+	{
+		// Just use the base
+		MethodDefinitions() : _NullTermBuf() {}
+		
 		// These containers don't invalidate references
 		std::list<std::string> MethodNames, MethodDocs;
 
-		// By default add the "null terminator",
-		// all other methods are inserted before it
-		MethodDefinitions() :
-			v_Defs(1, { 0 })
-		{}
-
 		// Add method definitions before the null terminator
 		size_t AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
-
-		// pointer to the definitions (which can move!)
-		PyMethodDef * ptr() { return v_Defs.data(); }
 	};
 
-	struct GenericPyClass
+	struct MemberDefinitions : public _NullTermBuf<PyMemberDef>
 	{
-		PyObject * capsule{ nullptr };
-	};
-
-	struct MemberDefinitions
-	{
-		// Method defs must be contiguous
-		std::vector<PyMemberDef> v_Defs;
-
 		// These containers don't invalidate references
 		std::list<std::string> MemberNames, MemberDocs;
 
-		// By default add the "null terminator",
-		// all other methods are inserted before it
-		MemberDefinitions();
+		// Use base
+		MemberDefinitions();// : NullTermBuf() {}
 
 		// Add method definitions before the null terminator
 		size_t AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
-
-		// pointer to the definitions (which can move!)
-		PyMemberDef * ptr() { return v_Defs.data(); }
 	};
 
 	// Defines an exposed class (which is not per instance)
@@ -111,13 +106,14 @@ namespace Python
 		// And members
 		MemberDefinitions m_MemberDef;
 
-		// We need to keep this where it won't move
-		// (maps don't invalidate refs)
+		// The Python type object
 		PyTypeObject m_TypeObject;
 
+		// Lock down pointers
 		void Prepare();
-		PyTypeObject& to() { return m_TypeObject; }
 
+		// Ref to type object
+		PyTypeObject& to() { return m_TypeObject; }
 
 		// Add method definitions before the null terminator
 		size_t AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {

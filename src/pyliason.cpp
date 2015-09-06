@@ -279,8 +279,8 @@ namespace Python {
 	// definitions will no longer move
 	void ExposedClass::Prepare()
 	{
-		m_TypeObject.tp_members = m_MemberDef.ptr();
-		m_TypeObject.tp_methods = m_MethodDef.ptr();
+		m_TypeObject.tp_members = m_MemberDef.Ptr();
+		m_TypeObject.tp_methods = m_MethodDef.Ptr();
 	}
 
 	size_t MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
@@ -305,15 +305,17 @@ namespace Python {
 			method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
 		}
 
-		v_Defs.insert(v_Defs.end() - 1, method);
-		return v_Defs.size();
+		return _insert(method);
 	}
 
+	// These by default get the c_ptr capsule object
 	MemberDefinitions::MemberDefinitions()
+		: _NullTermBuf()
 	{
 		MemberNames.push_back("c_ptr");
 		MemberDocs.push_back("pointer to a c object");
-		v_Defs = { { (char *)MemberNames.back().c_str(), T_OBJECT_EX, 0, 0, (char *)MemberDocs.back().c_str() }, { 0 } };
+		PyMemberDef d = { (char *)MemberNames.back().c_str(), T_OBJECT_EX, offsetof(GenericPyClass, capsule), 0, (char *)MemberDocs.back().c_str() };
+		_insert(d);
 	}
 
 	size_t MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
@@ -338,8 +340,7 @@ namespace Python {
 			member = { namePtr, type, offset, flags, (char *)MemberDocs.back().c_str() };
 		}
 
-		v_Defs.insert(v_Defs.end() - 1, member);
-		return v_Defs.size();
+		return _insert(member);
 	}
 
 	PyMODINIT_FUNC _Mod_Init()
@@ -354,7 +355,7 @@ namespace Python {
 			ModuleName.c_str(),
 			ModDocs.c_str(),
 			-1,
-			MethodDef.ptr()
+			MethodDef.Ptr()
 		};
 
 		PyObject * mod = PyModule_Create(&ModDef);
@@ -367,9 +368,6 @@ namespace Python {
 
 		// Is now the time to declare all classes?
 		for (auto& exp_class : ExposedClasses) {
-			auto& tObj = exp_class.second.m_TypeObject;
-			tObj.tp_methods = exp_class.second.m_MethodDef.ptr();
-			
 			if (PyType_Ready(&(exp_class.second.m_TypeObject)) < 0)
 				assert(false);
 
