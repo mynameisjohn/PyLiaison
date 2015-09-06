@@ -59,7 +59,7 @@ namespace Python
 		size_t _insert(D data) { v_Data.insert(v_Data.end() - 1, data); return v_Data.size(); }
 	};
 
-	// TODO template this
+	// Null terminated method defs
 	struct MethodDefinitions : public _NullTermBuf<PyMethodDef>
 	{
 		// Just use the base
@@ -72,6 +72,7 @@ namespace Python
 		size_t AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
 	};
 
+	// Null terminated member defs
 	struct MemberDefinitions : public _NullTermBuf<PyMemberDef>
 	{
 		// These containers don't invalidate references

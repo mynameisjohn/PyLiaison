@@ -136,16 +136,26 @@ namespace Python
 		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
 	}
 
+	// Pretty ridiculous
+	template <typename C>
+	C * _getCapsulePtr(PyObject * obj) 
+	{
+		assert(obj);
+		auto gpcPtr = static_cast<GenericPyClass *>((voidptr_t)obj);
+		assert(gpcPtr);
+		PyObject * capsule = gpcPtr->capsule;
+		assert(PyCapsule_CheckExact(capsule));
+		return static_cast<C *>(PyCapsule_GetPointer(capsule, NULL));
+	}
+
 	// Case 1
 	template <size_t idx, class C, typename R, typename ... Args>
 	static void _add_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
-			convert(a, tup);
-			std::tuple<C *, Args...> b;
-			voidptr_t obj = PyCapsule_GetPointer(static_cast<GenericPyClass *>((voidptr_t)s)->capsule, NULL);
-			R rVal = call_C<C, R>(fn, (C *)obj, tup);
+			convert(a, tup); // Can I prepend the pointer to this tuple?
+			R rVal = call_C<C, R>(fn, _getCapsulePtr<C>(s), tup);
 
 			return alloc_pyobject(rVal);
 		};
