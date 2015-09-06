@@ -231,39 +231,50 @@ namespace Python {
 	std::mutex CmdMutex;
 	PyObject * Py_ErrorObj;
 
-	// We only need one instance of the above, shared by exposed objects
-	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
-	{
-		// In the example the first arg isn't a PyObject *, but... idk man
-		GenericPyClass * bsPtr = static_cast<GenericPyClass *>((void *)self);
-		// The first argument is the capsule object
-		PyObject * c = PyTuple_GetItem(args, 0), *tmp(nullptr);
-		// Or at least it better be
-		if (c && PyCapsule_CheckExact(c))
-		{
-			auto test = PyCapsule_GetPointer(c, NULL);
-			tmp = bsPtr->capsule;
-
-			Py_INCREF(c);
-			bsPtr->capsule = c;
-			Py_INCREF(args);
-		}
-		//else ?
-
-		// TODO what about other members?
-
-		return 0;
-	};
-
-	static PyObject * PyClsCall(PyObject * co, PyObject * args, PyObject * kw)
-	{
-		return static_cast<GenericPyClass *>((voidptr_t)co)->capsule;
-	}
-
 	// These are the black sheep for now
 	PyModuleDef ModDef;
 	std::string ModDocs;
 
+	// TODO 
+	// Have the generic PyTypeObject as a global
+	// and inherit from it
+
+	// We only need one instance of the above, shared by exposed objects
+	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
+	{
+		// In the example the first arg isn't a PyObject *, but... idk man
+		GenericPyClass * realPtr = static_cast<GenericPyClass *>((void *)self);
+		// The first argument is the capsule object
+		PyObject * c = PyTuple_GetItem(args, 0), *tmp(nullptr);
+		
+		if (c)
+		{// Or at least it better be
+			if (PyCapsule_CheckExact(c))
+			{
+				// These ref counts are all messed up
+				auto test = PyCapsule_GetPointer(c, NULL);
+				tmp = realPtr->capsule;
+
+				Py_INCREF(c);
+				realPtr->capsule = c;
+				Py_INCREF(args);
+
+				return 0;
+			}
+		}
+
+		return -1;
+	};
+	
+	// The () operator just returns the capsule object
+	static PyObject * PyClsCall(PyObject * co, PyObject * args, PyObject * kw)
+	{
+		auto realPtr = static_cast<GenericPyClass *>((voidptr_t)co);
+		Py_INCREF(realPtr->capsule);
+		return realPtr->capsule;
+	}
+
+	// Constructor for exposed classes, sets up type object
 	ExposedClass::ExposedClass(std::string n, PyTypeObject tObj, std::list<Instance> v) :
 		PyClassName(n),
 		m_TypeObject(tObj),
@@ -287,7 +298,8 @@ namespace Python {
 		m_TypeObject.tp_methods = m_MethodDef.Ptr();
 	}
 
-	size_t MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
+	// Add a method, preserving the null terminator and storing strings where they won't be destroyed
+	void MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
 	{
 		// If a method with this name has already been declared, throw an error
 		if (std::find(MethodNames.begin(), MethodNames.end(), name) != MethodNames.end())
@@ -300,7 +312,7 @@ namespace Python {
 		MethodNames.push_back(name);
 		const char * namePtr = MethodNames.back().c_str();
 
-		PyMethodDef method;
+		PyMethodDef method{ 0 };
 
 		if (docs.empty())
 			method = { namePtr, fnPtr, flags, NULL };
@@ -309,7 +321,7 @@ namespace Python {
 			method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
 		}
 
-		return _insert(method);
+		_insert(method);
 	}
 
 	// These by default get the c_ptr capsule object
@@ -322,20 +334,21 @@ namespace Python {
 		_insert(d);
 	}
 
-	size_t MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
+	// Add a member, preserving the null terminator and storing strings where they won't be destroyed
+	void MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
 	{
-		// If a method with this name has already been declared, throw an error
+		// If a member with this name has already been declared, throw an error
 		if (std::find(MemberNames.begin(), MemberNames.end(), name) != MemberNames.end())
 		{
-			// Alternatively, this could actually overwrite the pre-existing method. 
-			throw runtime_error("Error: Attempting to overwrite exisiting exposed python function");
+			// Alternatively, this could actually overwrite the pre-existing member. 
+			throw runtime_error("Error: Attempting to overwrite exisiting exposed python class member");
 		}
 
 		// We need the names in a list so their references stay valid
 		MemberNames.push_back(name);
 		char * namePtr = (char *)MemberNames.back().c_str();
 
-		PyMemberDef member;
+		PyMemberDef member{ 0 };
 		
 		if (docs.empty())
 			member = { namePtr, type, offset, flags, NULL };
@@ -344,7 +357,7 @@ namespace Python {
 			member = { namePtr, type, offset, flags, (char *)MemberDocs.back().c_str() };
 		}
 
-		return _insert(member);
+		_insert(member);
 	}
 
 	PyMODINIT_FUNC _Mod_Init()

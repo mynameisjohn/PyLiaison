@@ -45,7 +45,8 @@ namespace Python
 		D * Ptr() { return v_Data.data(); }
 		_NullTermBuf() :v_Data({ { 0 } }) {}
 	protected:
-		size_t _insert(D data) { v_Data.insert(v_Data.end() - 1, data); return v_Data.size(); }
+		// Insert elements before the last (null) element
+		void _insert(D data) { v_Data.insert(v_Data.end() - 1, data); }
 	};
 
 	// Null terminated method defs
@@ -58,7 +59,7 @@ namespace Python
 		std::list<std::string> MethodNames, MethodDocs;
 
 		// Add method definitions before the null terminator
-		size_t AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
+		void AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
 	};
 
 	// Null terminated member defs
@@ -71,7 +72,7 @@ namespace Python
 		MemberDefinitions();// : NullTermBuf() {}
 
 		// Add method definitions before the null terminator
-		size_t AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
+		void AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
 	};
 
 	// Defines an exposed class (which is not per instance)
@@ -106,10 +107,10 @@ namespace Python
 		PyTypeObject& to() { return m_TypeObject; }
 
 		// Add method definitions before the null terminator
-		size_t AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
-			return m_MethodDef.AddMethod(name, fnPtr, flags, docs);
+		void AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
+			m_MethodDef.AddMethod(name, fnPtr, flags, docs);
 		}
-		size_t AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
+		void AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
 			m_MemberDef.AddMember(name, type, offset, flags, doc);
 		}
 

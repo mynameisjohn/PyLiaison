@@ -81,7 +81,38 @@ namespace Python
 		typedef typename std::decay<Tuple>::type ttype;
 		return detail::call_impl_C<C, R, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call_C(f, c,std::forward<Tuple>(t));
 	}
-    
+   
+	// void
+	namespace detail
+	{
+		template <class C, typename F, typename Tuple, bool Done, int Total, int... N>
+		struct call_implv_C
+		{
+			static void callv_C(F f, C * c, Tuple && t)
+			{
+				call_implv_C<C, F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::callv_C(f, c, std::forward<Tuple>(t));
+			}
+		};
+
+		template <typename C, typename F, typename Tuple, int Total, int... N>
+		struct call_implv_C<C, F, Tuple, true, Total, N...>
+		{
+			static void callv_C(F f, C * c, Tuple && t)
+			{
+				f(c, std::get<N>(std::forward<Tuple>(t))...);
+			}
+		};
+	}
+
+	// user invokes this
+	template <typename C, typename F, typename Tuple>
+	void callv_C(F f, C * c, Tuple && t)
+	{
+		typedef typename std::decay<Tuple>::type ttype;
+		detail::call_implv_C<C, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::callv_C(f, c, std::forward<Tuple>(t));
+	}
+
+
     // This was also stolen from stack overflow
     // but I'm hoping to phase it out. It allows me to expose
     // std::functions as function pointers, which python

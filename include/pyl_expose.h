@@ -28,7 +28,7 @@ namespace Python
 	extern MethodDefinitions MethodDef;
 	extern PyObject * Py_ErrorObj;
 
-	// These are the black sheep for now
+	// These don't really need encapsulation
 	extern PyModuleDef ModDef;
 	extern std::string ModDocs;
    
@@ -150,7 +150,7 @@ namespace Python
 
 	// Case 1
 	template <size_t idx, class C, typename R, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void _add_Mem_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -164,21 +164,22 @@ namespace Python
 
 	// Case 2
 	template <size_t idx, class C, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void _add_Mem_Func(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
 			convert(a, tup); // Can I prepend the pointer to this tuple?
-			call_C<C, void>(fn, _getCapsulePtr<C>(s), tup);
+			callv_C<C>(fn, _getCapsulePtr<C>(s), tup);
 
-			return;
+			Py_INCREF(Py_None);
+			return Py_None;
 		};
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
 
 	// Case 3
 	template <size_t idx, class C, typename R>
-	static void _add_Func(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
+	static void _add_Mem_Func(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			R rVal = call_C<C, R>(fn, _getCapsulePtr<C>(s));
@@ -190,12 +191,13 @@ namespace Python
 
 	// Case 4
 	template <size_t idx, class C>
-	static void _add_Func(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
+	static void _add_Mem_Func(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-			call_C<C, R>(fn, _getCapsulePtr<C>(s));
+			callv_C<C>(fn, _getCapsulePtr<C>(s));
 
-			return;
+			Py_INCREF(Py_None);
+			return Py_None;
 		};
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
 	}
