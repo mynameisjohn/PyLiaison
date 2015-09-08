@@ -252,7 +252,6 @@ namespace Python {
 			if (PyCapsule_CheckExact(c))
 			{
 				// These ref counts are all messed up
-				auto test = PyCapsule_GetPointer(c, NULL);
 				tmp = realPtr->capsule;
 
 				Py_INCREF(c);

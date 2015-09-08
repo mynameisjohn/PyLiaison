@@ -114,7 +114,7 @@ namespace Python
 			m_MemberDef.AddMember(name, type, offset, flags, doc);
 		}
 
-		ExposedClass(std::string n = " ", PyTypeObject = { PyVarObject_HEAD_INIT(NULL, 0) }, std::list<Instance> v = {});
+		ExposedClass(std::string n = "un_named", PyTypeObject = { PyVarObject_HEAD_INIT(NULL, 0) }, std::list<Instance> v = {});
 	};
 
 	// TODO more doxygen!

@@ -41,5 +41,5 @@ namespace Python
 	}
 	
     // Invokes the above with a file from disk
-    int Runfile(std::string fileName);
+    int RunFile(std::string fileName);
 }
