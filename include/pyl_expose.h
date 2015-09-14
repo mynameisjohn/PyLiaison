@@ -53,7 +53,7 @@ namespace Python
 		if (it == ExposedClasses.end())
 			return;
 
-		it->second.AddMember(name, type, offset, flags, doc);
+		it->second.AddMember(name, type, offset, flags, docs);
 	}
 
 	template <size_t idx, class C>
