@@ -5,6 +5,9 @@
 
 namespace Python
 {
+    // This feels gross
+    using voidptr_t = void *;
+    
     // Utility for preprending tabs to python code
 	const std::string py_tab = "    ";
 	inline std::string getTabs(int n) {

@@ -22,9 +22,6 @@ namespace Python
 	// unique_ptr that uses Py_XDECREF as the destructor function.
 	typedef std::unique_ptr<PyObject, PyObjectDeleter> pyunique_ptr;
 
-	// This feels gross
-	using voidptr_t = void *;
-
 	// All exposed objects inherit from this
 	struct GenericPyClass
 	{
