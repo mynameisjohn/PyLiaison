@@ -246,10 +246,10 @@ namespace Python
 		PyObject* capsule = PyCapsule_New(obj, NULL, NULL);
 
 		// Set the c_ptr member variable (which better exist) to the capsule
-		int success = PyObject_SetAttrString(newPyObject, "c_ptr", capsule);
+        static_cast<GenericPyClass *>((voidptr_t)newPyObject)->capsule = capsule;
 
 		// Make a variable in the module out of the new py object
-		success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
+		int success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
 
 		// Right now I don't know why we should keep them
 		it->second.Instances.push_back({ obj, name });
