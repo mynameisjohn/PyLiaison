@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <array>
 
 #include <Python.h>
 
@@ -100,6 +101,30 @@ namespace Python
 	template<class T> bool convert(PyObject *obj, std::vector<T> &vec) {
 		return convert_list<T, std::vector<T>>(obj, vec);
 	}
+    
+    // Convert a PyObject to a contiguous buffer (very unsafe, but hey)
+    template<class T> bool convert_buf(PyObject *obj, T * arr, int N){
+        if (!PyList_Check(obj))
+            return false;
+        Py_ssize_t len = PyList_Size(obj);
+        if (len > N) len = N;
+        for (Py_ssize_t i(0); i < len; ++i) {
+            T& val = arr[i];
+            if (!convert(PyList_GetItem(obj, i), val))
+                return false;
+        }
+        return true;
+    }
+    
+    // Convert a PyObject to a std::array, safe version of above
+    template<class T, size_t N> bool convert_buf(PyObject *obj, std::array<T, N>& arr){
+        return convert_buf<T>(obj, arr.data(), int(N));
+    }
+
+    // Convert a PyObject to a std::array
+//    template<class T, size_t N> bool convert(PyObject *obj, std::array<T, N>& arr){
+//        return convert_buf<T>(obj, arr.data(), int(N)>;
+//    }
 
 	// Generic convert function used by others
 	template<class T> bool generic_convert(PyObject *obj,
