@@ -85,14 +85,16 @@ namespace Python
 			voidptr_t c_ptr;
 			std::string pyname;
 		};
-		// A list of exposed C++ object pointers
+		// A list of exposed C++ object pointers (why?)
 		std::list<Instance> Instances;
 
 		// The name of the python class
 		std::string PyClassName;
+        
 		// Each exposed class has a method definition
 		MethodDefinitions m_MethodDef;
-		// And members
+		
+        // And members
 		MemberDefinitions m_MemberDef;
 
 		// The Python type object
@@ -108,11 +110,14 @@ namespace Python
 		void AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
 			m_MethodDef.AddMethod(name, fnPtr, flags, docs);
 		}
+        
+        // Add member definitions (which isn't really a thing we want to do...)
 		void AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
 			m_MemberDef.AddMember(name, type, offset, flags, doc);
 		}
 
-		ExposedClass(std::string n = "un_named", PyTypeObject = { PyVarObject_HEAD_INIT(NULL, 0) }, std::list<Instance> v = {});
+        // Default constructor
+        ExposedClass(std::string n = "unnamed");
 	};
 
 	// TODO more doxygen!

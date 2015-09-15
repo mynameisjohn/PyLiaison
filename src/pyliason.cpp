@@ -256,7 +256,6 @@ namespace Python {
 
 				Py_INCREF(c);
 				realPtr->capsule = c;
-				Py_INCREF(args);
 
 				return 0;
 			}
@@ -274,12 +273,10 @@ namespace Python {
 	}
 
 	// Constructor for exposed classes, sets up type object
-	ExposedClass::ExposedClass(std::string n, PyTypeObject tObj, std::list<Instance> v) :
-		PyClassName(n),
-		m_TypeObject(tObj),
-		Instances(v)
+	ExposedClass::ExposedClass(std::string n) : PyClassName(n)
 	{
 		// Take care of this now
+        memset(&m_TypeObject, 0, sizeof(PyTypeObject));
 		m_TypeObject.ob_base = PyVarObject_HEAD_INIT(NULL, 0)
 		m_TypeObject.tp_name = PyClassName.c_str();
 		m_TypeObject.tp_init = (initproc)PyClsInit;
