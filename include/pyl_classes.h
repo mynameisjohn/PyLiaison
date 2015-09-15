@@ -25,6 +25,7 @@ namespace Python
 	// All exposed objects inherit from this
 	struct GenericPyClass
 	{
+        PyObject_HEAD
 		PyObject * capsule{ nullptr };
 	};
 
