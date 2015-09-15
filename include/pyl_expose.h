@@ -14,7 +14,7 @@
 
 // TODO make a member function equivalent of this
 #define Py_Add_Func(name, fn, docs)\
-	Python::_add_Func<__LINE__>(std::string(name), Python::make_function(fn), METH_VARARGS, docs)
+	Python::Register_Function<__LINE__>(std::string(name), Python::make_function(fn), METH_VARARGS, docs)
 
 namespace Python
 {
@@ -46,6 +46,7 @@ namespace Python
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 	}
 
+    // This isn't really being used at the moment, since the intention is unclear
 	template<class C>
 	void _add_Member(std::string name, size_t offset, int flags, std::string docs) {
 		const int type = T_INT; // What do I do for other types? Make a map?
@@ -71,14 +72,11 @@ namespace Python
 
 		// Add function
 		it->second.AddMemberFn(methodName, fnPtr, methodFlags,  docs);
-
-		// You can key the methodName string to a std::function
-		//MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
 	}
 
 	// Case 1: a straight up function that would look like : R fn( Args... ) { ... return R(); }
 	template <size_t idx, typename R, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -94,7 +92,7 @@ namespace Python
 
 	// Case 2: like above, but void return : void fn( Args... ) { ... return; }
 	template <size_t idx, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -111,7 +109,7 @@ namespace Python
 
 	// Case 3: returns R, no args : R fn() { ... return R(); }
 	template <size_t idx, typename R>
-	static void _add_Func(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -150,7 +148,7 @@ namespace Python
 
 	// Case 1
 	template <size_t idx, class C, typename R, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -164,7 +162,7 @@ namespace Python
 
 	// Case 2
 	template <size_t idx, class C, typename ... Args>
-	static void _add_Func(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -179,10 +177,10 @@ namespace Python
 
 	// Case 3
 	template <size_t idx, class C, typename R>
-	static void _add_Func(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-			R rVal = call_C<C, R>(fn, _getCapsulePtr<C>(s));
+            R rVal = fn(_getCapsulePtr<C>(s));
 
 			return alloc_pyobject(rVal);
 		};
@@ -191,10 +189,10 @@ namespace Python
 
 	// Case 4
 	template <size_t idx, class C>
-	static void _add_Func(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-			callv_C<C>(fn, _getCapsulePtr<C>(s));
+            fn(_getCapsulePtr<C>(s));
 
 			Py_INCREF(Py_None);
 			return Py_None;
@@ -253,7 +251,6 @@ namespace Python
 
 		// Right now I don't know why we should keep them
 		it->second.Instances.push_back({ obj, name });
-		ExposedClass::Instance& instRef = it->second.Instances.back();
 
 		// decref and return
 		Py_DECREF(mod);
