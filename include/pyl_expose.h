@@ -213,8 +213,9 @@ namespace Python
 
 	// This will expose a specific C++ object instance as a Python
 	// object, giving it a pointer to the original object (which better stay live)
+	// TODO this could leak if it fails; also classes should have a destructor
 	template <class C>
-	static void Expose_Object(C * instance, std::string name, PyObject * mod = nullptr) {
+	static void Expose_Object(C * instance, const std::string& name, PyObject * mod = nullptr) {
 		// Make sure it's a valid pointer
 		if (!instance)
 			return;
@@ -224,11 +225,6 @@ namespace Python
 		if (it == ExposedClasses.end())
 			return;
 
-		// Right now I don't know why we should keep them
-		voidptr_t obj = static_cast<voidptr_t>(instance);
-		it->second.Instances.push_back({ obj, name });
-		ExposedClass::Instance& instRef = it->second.Instances.back();
-
 		// If a module wasn't specified, just do main
 		if (!mod) {
 			// If there isn't a specific module,
@@ -237,21 +233,27 @@ namespace Python
 			mod = PyImport_ImportModule("__main__");
 		}
 
+		// Make a void pointer out of it
+		voidptr_t obj = static_cast<voidptr_t>(instance);
+
+		// Get the type object pointer
+		PyTypeObject * tObjPtr = &it->second.m_TypeObject;
+
+		// Allocate a new object instance given the PyTypeObject
+		PyObject* newPyObject = _PyObject_New(tObjPtr);
+
 		// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
-		PyObject* newPyObject = PyCapsule_New(instRef.c_ptr, NULL, NULL); // instRef.pyname.c_str());
+		PyObject* capsule = PyCapsule_New(obj, NULL, NULL);
 
-		// Make a dummy variable, assign it to the ptr
-		//PyObject * module = PyImport_ImportModule("__main__");
-		PyRun_SimpleString("c_ptr = 0");
-		PyObject_SetAttrString(mod, "c_ptr", newPyObject);
+		// Set the c_ptr member variable (which better exist) to the capsule
+		int success = PyObject_SetAttrString(newPyObject, "c_ptr", capsule);
 
-		// Construct the python class, using the capsule object as a ctor argument
-		std::string pythonCall;
-		pythonCall.append(name).append(" = ").append(it->second.PyClassName).append("(c_ptr)");
-		PyRun_SimpleString(pythonCall.c_str());
+		// Make a variable in the module out of the new py object
+		success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
 
-		// Get rid of the dummy var
-		PyRun_SimpleString("del c_ptr");
+		// Right now I don't know why we should keep them
+		it->second.Instances.push_back({ obj, name });
+		ExposedClass::Instance& instRef = it->second.Instances.back();
 
 		// decref and return
 		Py_DECREF(mod);
