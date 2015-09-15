@@ -61,24 +61,10 @@ int main() {
 	Python::RunCmd("print(g_Foo)");
 	Python::RunCmd("print(g_Foo())");
 	Python::RunCmd("print(g_Foo.getFloat(2))");
-	Python::RunCmd("print(Foo_getFloat(g_Foo(), 2))");
 	
 	Python::RunCmd("print(g_Foo.testVoid1(2))");
 	Python::RunCmd("print(g_Foo.testVoid2())");
 	Python::RunCmd("print(g_Foo.testVoid3())");
-
-    // Your options for exposing objects within these things are to
-    // a) pass the pointer and call the module version of the function directly
-    // b) somehow get the class constructor in the module (?),
-    //    set attrs within Python::Object module
-    // a) is easy, b) is preferable, the two are not mutually exclusive
-    // It seems that python does allow type definitions within modules,
-    // so b) may be possible
-    auto script = Python::Object::from_script("script.py");
-    script.call_function("SayHello");
-    script.call_function("FooTest", &g_Foo);
-    
-	cout << "hello world" << endl;
 
 	return 0;
 }

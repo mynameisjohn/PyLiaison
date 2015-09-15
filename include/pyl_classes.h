@@ -40,7 +40,7 @@ namespace Python
 	{
 		std::vector<D> v_Data;
 		D * Ptr() { return v_Data.data(); }
-		_NullTermBuf() :v_Data({ { 0 } }) {}
+		_NullTermBuf() :v_Data( 1, { 0 } ) {}
 	protected:
 		// Insert elements before the last (null) element
 		void _insert(D data) { v_Data.insert(v_Data.end() - 1, data); }
