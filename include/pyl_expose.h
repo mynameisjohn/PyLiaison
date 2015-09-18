@@ -16,6 +16,7 @@
 #define Py_Add_Func(name, fn, docs)\
 	Python::Register_Function<__LINE__>(std::string(name), Python::make_function(fn), METH_VARARGS, docs)
 
+
 namespace Python
 {
 	// The idea is to make a module where all your functions live
@@ -147,8 +148,8 @@ namespace Python
 	}
 
 	// Case 1
-	template <size_t idx, class C, typename R, typename ... Args>
-	static void Register_Function(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	template <typename C, size_t idx, typename R, typename ... Args>
+	static void Register_Mem_Function(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -161,8 +162,8 @@ namespace Python
 	}
 
 	// Case 2
-	template <size_t idx, class C, typename ... Args>
-	static void Register_Function(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	template <typename C, size_t idx, typename ... Args>
+	static void Register_Mem_Function(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -176,8 +177,8 @@ namespace Python
 	}
 
 	// Case 3
-	template <size_t idx, class C, typename R>
-	static void Register_Function(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
+	template <typename C, size_t idx, typename R>
+	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
             R rVal = fn(_getCapsulePtr<C>(s));
@@ -188,8 +189,8 @@ namespace Python
 	}
 
 	// Case 4
-	template <size_t idx, class C>
-	static void Register_Function(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
+	template <typename C, size_t idx>
+	static void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
             fn(_getCapsulePtr<C>(s));
