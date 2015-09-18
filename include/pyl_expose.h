@@ -14,7 +14,7 @@
 
 // TODO make a member function equivalent of this
 #define Py_Add_Func(name, fn, docs)\
-	Python::Register_Function<__LINE__>(std::string(name), Python::make_function(fn), METH_VARARGS, docs)
+	Python::Register_Function<__LINE__>(std::string(name), Python::make_function(fn), docs)
 
 
 namespace Python
@@ -77,7 +77,7 @@ namespace Python
 
 	// Case 1: a straight up function that would look like : R fn( Args... ) { ... return R(); }
 	template <size_t idx, typename R, typename ... Args>
-	static void Register_Function(std::string methodName, std::function<R(Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -88,12 +88,12 @@ namespace Python
 			return alloc_pyobject(rVal);
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
+		_add_Method_Def<idx>(pFn, methodName, METH_VARARGS, docs);
 	}
 
 	// Case 2: like above, but void return : void fn( Args... ) { ... return; }
 	template <size_t idx, typename ... Args>
-	static void Register_Function(std::string methodName, std::function<void(Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -105,12 +105,12 @@ namespace Python
 			return Py_None;
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
+		_add_Method_Def<idx>(pFn, methodName, METH_VARARGS, docs);
 	}
 
 	// Case 3: returns R, no args : R fn() { ... return R(); }
 	template <size_t idx, typename R>
-	static void Register_Function(std::string methodName, std::function<R()> fn, int methodFlags, std::string docs = "")
+	static void Register_Function(std::string methodName, std::function<R()> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -118,12 +118,12 @@ namespace Python
 			return alloc_pyobject(rVal);
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
+		_add_Method_Def<idx>(pFn, methodName, METH_NOARGS, docs);
 	}
 
 	// Case 4: returns void, no args : void fn() { ... hello world; }
 	template <size_t idx>
-	static void _add_Func(std::string methodName, std::function<void()> fn, int methodFlags, std::string docs = "")
+	static void _add_Func(std::string methodName, std::function<void()> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -132,7 +132,7 @@ namespace Python
 			return Py_None;
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, methodFlags, docs);
+		_add_Method_Def<idx>(pFn, methodName, METH_NOARGS, docs);
 	}
 
 	// Pretty ridiculous
@@ -149,7 +149,7 @@ namespace Python
 
 	// Case 1
 	template <typename C, size_t idx, typename R, typename ... Args>
-	static void Register_Mem_Function(std::string methodName, std::function<R(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Mem_Function(std::string methodName, std::function<R(C *, Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -158,12 +158,12 @@ namespace Python
 
 			return alloc_pyobject(rVal);
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_VARARGS, docs);
 	}
 
 	// Case 2
 	template <typename C, size_t idx, typename ... Args>
-	static void Register_Mem_Function(std::string methodName, std::function<void(C *, Args...)> fn, int methodFlags, std::string docs = "")
+	static void Register_Mem_Function(std::string methodName, std::function<void(C *, Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			std::tuple<Args...> tup;
@@ -173,24 +173,24 @@ namespace Python
 			Py_INCREF(Py_None);
 			return Py_None;
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_VARARGS, docs);
 	}
 
 	// Case 3
 	template <typename C, size_t idx, typename R>
-	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, int methodFlags, std::string docs = "")
+	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
             R rVal = fn(_getCapsulePtr<C>(s));
 
 			return alloc_pyobject(rVal);
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_NOARGS, docs);
 	}
 
 	// Case 4
 	template <typename C, size_t idx>
-	static void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, int methodFlags, std::string docs = "")
+	static void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
             fn(_getCapsulePtr<C>(s));
@@ -198,7 +198,7 @@ namespace Python
 			Py_INCREF(Py_None);
 			return Py_None;
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, methodFlags, docs);
+		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_NOARGS, docs);
 	}
 	
 	// This function generates a python class definition

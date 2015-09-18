@@ -55,8 +55,6 @@ namespace Python
 
 	template<class... Args>
 	bool convert(PyObject *obj, std::tuple<Args...> &tup) {
-		auto a = PyTuple_Check(obj);
-		auto b = PyTuple_Size(obj) != (sizeof...(Args));
 		if (!PyTuple_Check(obj) ||
 			PyTuple_Size(obj) != sizeof...(Args))
 			return false;
