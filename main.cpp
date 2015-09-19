@@ -37,11 +37,9 @@ bool ExposeFuncs() {
 	std::function<void(Foo *, int)> fooFn2(&Foo::testVoid1);
 	Python::Register_Mem_Function<Foo, __LINE__>("testVoid1", fooFn2, "Testing a member function");
 
-	std::function<void(Foo *)> fooFn3(&Foo::testVoid2);
-	Python::Register_Mem_Function<Foo, __LINE__>("testVoid2", fooFn3, "Testing a member function");
+	Python::Register_Mem_Function<Foo, __LINE__>("testVoid2", &Foo::testVoid2, "Testing a member function");
 
-	std::function<int(Foo *)> fooFn4(&Foo::testVoid3);
-	Python::Register_Mem_Function<Foo, __LINE__>("testVoid3", fooFn4, "Testing a member function");
+	Python::Register_Mem_Function<Foo, int, __LINE__>("testVoid3", &Foo::testVoid3, "Testing a member function");
 	return true;
 }
 

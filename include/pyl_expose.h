@@ -177,7 +177,7 @@ namespace Python
 	}
 
 	// Case 3
-	template <typename C, size_t idx, typename R>
+	template <typename C, typename R, size_t idx>
 	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
