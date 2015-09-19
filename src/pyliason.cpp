@@ -20,6 +20,8 @@
 
 #include <algorithm>
 #include <fstream>
+#include <locale>
+#include <codecvt>
 
 #include "pyliason.h"
 
@@ -40,8 +42,7 @@ namespace Python {
 	}
 
 	Object Object::from_script(const string &script_path) {
-		char arr[] = "path";
-		PyObject *path(PySys_GetObject(arr));
+		// Get the directory path and file name
 		string base_path("."), file_path;
 		size_t last_slash(script_path.rfind("/"));
 		if (last_slash != string::npos) {
@@ -54,20 +55,28 @@ namespace Python {
 			file_path = script_path;
 		if (file_path.rfind(".py") == file_path.size() - 3)
 			file_path = file_path.substr(0, file_path.size() - 3);
-		pyunique_ptr pwd(PyBytes_FromString(base_path.c_str()));
 
-		PyList_Append(path, pwd.get());
-		/* We don't need that string value anymore, so deref it */
-
-		  // It's interesting that scripts are imported as modules
-		  // Find out if you can leverage this to work with the
-		  // PyLiaison module that you create
+		// Try loading just the file name
 		PyObject *py_ptr(PyImport_ImportModule(file_path.c_str()));
-		if (!py_ptr) {
-			print_error();
-			throw runtime_error("Failed to load script");
+		if (py_ptr)
+			return{ py_ptr };
+
+		// If we didn't get it, see if the dir path is in PyPath
+		char arr[] = "path";
+		PyObject *path(PySys_GetObject(arr));
+		std::vector<std::string> curPath;
+		Python::convert(path, curPath);
+
+		// If it isn't add it to the path and try again
+		if (std::find(curPath.begin(), curPath.end(), base_path) == curPath.end()) {
+			pyunique_ptr pwd(PyUnicode_FromString(base_path.c_str()));
+			PyList_Append(path, pwd.get());
+			return from_script(script_path);
 		}
-		return{ py_ptr };
+
+		// If it was in the path and we still couldn't load, there's a problem
+		print_error();
+		throw runtime_error("Failed to load script");
 	}
 
 	PyObject *Object::load_function(const std::string &name) {
@@ -105,6 +114,21 @@ namespace Python {
 	void initialize() {
 		// Finalize any previous stuff
 		Py_Finalize();
+
+		// Set up relative path
+		//if (argc && argv) {
+		//	std::vector<std::wstring> wArgs;
+		//	std::vector<wchar_t *> wBuf;
+		//	for (int i = 0; i < argc; i++)
+		//	{
+		//		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+		//		wArgs.push_back(converter.from_bytes(argv[i]));
+		//		wBuf.push_back((wchar_t *)wArgs.back().c_str());
+		//	}
+
+		//	Py_SetProgramName(wBuf[0]);
+		//	PySys_SetArgv(argc, wBuf.data());
+		//}
 
 		// Call the _Mod_Init function when my module is imported
 		PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
@@ -182,10 +206,14 @@ namespace Python {
 	}
 
 	bool convert(PyObject *obj, std::string &val) {
-		if (!PyBytes_Check(obj))
-			return false;
-		val = PyBytes_AsString(obj);
-		return true;
+		if (PyBytes_Check(obj)) {
+			val = PyBytes_AsString(obj);
+			return true;
+		}
+		else if (PyUnicode_Check(obj)) {
+			val = PyUnicode_AsUTF8(obj);
+			return true;
+		}
 	}
 
 	bool convert(PyObject *obj, std::vector<char> &val) {
