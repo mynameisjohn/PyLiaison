@@ -3,8 +3,15 @@ using namespace std;
 
 #include "pyliason.h"
 
+#include <glm/glm.hpp>
+
 int testArgs(int x, int y) {
 	return x + y;
+}
+
+bool testOverload(glm::vec3 v){
+	v.x=0.f;
+	return true;
 }
 
 struct Foo {
@@ -27,7 +34,9 @@ Foo g_Foo;
 
 bool ExposeFuncs() {
 	Py_Add_Func("testArgs", testArgs, "test adding two args");
-    
+
+	Py_Add_Func("testOverload", testOverload, "can I overload a conversion?");   
+ 
 	Python::Register_Class<Foo, __LINE__>("Foo");
 
 	std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
@@ -62,6 +71,8 @@ int main() {
 	Python::RunCmd("print(g_Foo.testVoid1(2))");
 	Python::RunCmd("print(g_Foo.testVoid2())");
 	Python::RunCmd("print(g_Foo.testVoid3())");
+
+	Python::RunCmd("print(testOverload([1.,2.,3.]))");
 
 	return 0;
 }

@@ -16,7 +16,7 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 file(GLOB HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h)
 
 add_library(PyLiaison ${SOURCES} ${HEADERS})
-target_include_directories(PyLiaison PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
+target_include_directories(PyLiaison PUBLIC /usr/local/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
 
 add_executable(PyLiaison_Test main.cpp)
 target_link_libraries(PyLiaison_Test LINK_PUBLIC PyLiaison ${PYTHON_LIBRARY})
