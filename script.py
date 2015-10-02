@@ -14,22 +14,29 @@ def SayHello():
 # actually have to declare
 # g_Foo beforehand, but
 # it's probably a good habit
-g_Foo = None
+c_Foo = None
 
 # Verify that we exposed foo
 def checkFoo():
-	if (g_Foo == None):
+	if (c_Foo == None):
 		print('Error: g_Foo object not exposed!')
+		return False
 	else:
-		g_Foo.setVec([1.,2.,3.])
+		c_Foo.setVec([1.,2.,3.])
+		return True
 
-# This will be retrieved as a Vector3
-g_Vec3 = [1., 0., 0.]
+# This will be modified and
+# then retrieved as a Vector3
+# in the host code
+g_Vec3 = None
+
+def SetVec(x, y, z):
+	g_Vec3 = [x, y, z]	
 
 # You can also construct
 # C++ objects on the fly
 def FooTest(fPtr):
 	f = Foo(fPtr)
-	f.setFloat(1.0)
+	f.setVec(g_Vec3)
 	print('We got a foo object at ' + str(f()))
 	print('It\'s vector is ' + str(Foo.getVec()))

@@ -12,7 +12,7 @@ int testArgs(int x, int y) {
 
 // You can call this function
 // From python; see the implementation
-// of the c++ - python conversions
+// of the c++ <==> python conversions
 // at the bottom of this file
 Vector3 testOverload(Vector3 v){
 	Vector3 nrm_v = v;
@@ -44,12 +44,9 @@ struct Vector3
 // Expose this class in python
 class Foo {
 	Vector3 m_Vec3;
-public:
-	// get m_Float member
-	float getFloat() {
-		return m_Float;
-	}
 
+	// These are callable from Python
+public:
 	// get m_Vec3 member
 	Vector3 getVec(){
 		return m_Vec3;
@@ -67,40 +64,13 @@ public:
 	}
 };
 
-bool ExposeFuncs() {
-	// add testArgs(x, y): to the PyLiaison module
-	Py_Add_Func("testArgs", testArgs, "test adding two args");
+// Expose things to Python via the
+// PyLiaison module; see implementation
+// at bottom of file
+void ExposeFuncs();
 
-	// add testOverload(v): to the PyLiaison module
-    Py_Add_Func("testOverload", testOverload, "where do I have to implement it?");
- 
-	// Register the Foo class
-	Python::Register_Class<Foo, __LINE__>("Foo");
-
-	// Register Foo::getFloat(int) as a member function of Foo
-	std::function<float(Foo *)> fooFn(&Foo::getFloat);
-	Python::Register_Mem_Function<Foo, __LINE__>("getFloat", fooFn, "Testing a member function");
-
-	// Register Foo::getFloat(int) as a member function of Foo
-	std::function<flo(Foo *)> fooFn(&Foo::getFloat);
-	Python::Register_Mem_Function<Foo, __LINE__>("getFloat", fooFn, "Testing a member function");
-
-	// Register Foo::getFloat(int) as a member function of Foo
-	std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
-	Python::Register_Mem_Function<Foo, __LINE__>("getFloat", fooFn, "Testing a member function");
-
-	// Same for all these
-	std::function<void(Foo *, int)> fooFn2(&Foo::testVoid1);
-	Python::Register_Mem_Function<Foo, __LINE__>("testVoid1", fooFn2, "Testing a member function");
-
-	Python::Register_Mem_Function<Foo, __LINE__>("testVoid2", &Foo::testVoid2, "Testing a member function");
-
-	Python::Register_Mem_Function<Foo, int, __LINE__>("testVoid3", &Foo::testVoid3, "Testing a member function");
-
-	return true;
-}
-
-int main() {
+int main() 
+{
 	// Call the above function
 	ExposeFuncs();
 
@@ -113,22 +83,81 @@ int main() {
 	// Call testOverload, passing in a Vector3 and getting one back
 	Python::RunCmd("print(testOverload([1.,2.,3.]))");
 
-	// Expose the g_Foo instance of Foo
-	Python::Expose_Object(&g_Foo, "g_Foo");
+	// Make a foo instance
+	Foo fOne
 
-	// TODO test reference counts
-	std::cout << &g_Foo << std::endl;
+	// Expose the Foo instance fOne
+	// into the main module
+	Python::Expose_Object(&fOne, "g_Foo");
+
+	// Print some info
 	Python::RunCmd("print(g_Foo)");
+	// The () operator returns the address
 	Python::RunCmd("print(g_Foo())");
 
 	// Test member functions of Foo
-	Python::RunCmd("print(g_Foo.getFloat(2))");
+	Python::RunCmd("print(g_Foo.getVec())");
 	Python::RunCmd("print(g_Foo.testVoid1(2))");
 	Python::RunCmd("print(g_Foo.testVoid2())");
 	Python::RunCmd("print(g_Foo.testVoid3())");
+	
+	// Now load up our custom module
+	// note that the relative path may be wrong
+	auto myMod = Python::Object::from_script("../script.py");
 
-	return 0;
+	// Hello world
+	myMod.call_function("sayHello");
+
+	// Expose the Foo instance into another module
+	Python::Expose_Object(&fOne, "c_Foo", myMod.get());
+
+	// Verify that it was exposed
+	bool success(false);
+	myMod.call_function("checkFoo").convert(success);
+	if (success)
+		std::cout << "Foo object successfully exposed!" << std::endl;
+	else
+		std::cout << "Host code was unable to expose Foo object!" << std::endl;
+
+	// Set the vec3 object in the module
+	myMod.call_function("setVec", 1.0, 0.0, 0.0);
+
+	// Retrieve it from the module and see what we got
+	Vector3 pyVec;
+	myMod.get_attr("g_Vec3").convert(pyVec);
+	std::cout << pyVec[0] << " better be 1.0" << std::endl;
+
+	// You can construct Foo objects within the module
+	// without having to expose them
+	Foo fTwo;
+	myMod.call_function("FooTest", &fTwo);
+
+	return EXIT_SUCCESS;
 }
+
+// Expose all Python Functions
+void ExposeFuncs() {
+	// add testArgs(x, y): to the PyLiaison module
+	Py_Add_Func("testArgs", testArgs, "test adding two args");
+
+	// add testOverload(v): to the PyLiaison module
+    Py_Add_Func("testOverload", testOverload, "where do I have to implement it?");
+ 
+	// Register the Foo class
+	Python::Register_Class<Foo, __LINE__>("Foo");
+
+	// Register member functions of Foo
+	std::function<Vector3(Foo *)> Foo_getVec(&Foo::getVec);
+	Python::Register_Mem_Function<Foo, __LINE__>("getVec", Foo_getVec,
+		"Get the m_Vec3 member of a Foo instance");
+	std::function<void(Foo *, Vector3)> Foo_setVec(&Foo::setVec);
+	Python::Register_Mem_Function<Foo, __LINE__>("setVec", Foo_setVec,
+		"Set the m_Vec3 member of a Foo instance with a list");
+	std::function<void(Foo *)> Foo_nrmVec(&Foo::normalizeVec);
+	Python::Register_Mem_Function<Foo, __LINE__>("normalizeVec", Foo_nrmVec,
+		"normalize the m_Vec3 member of a Foo instance");
+}
+
 
 // Implementation of conversion/allocation functions
 namespace Python
