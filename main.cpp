@@ -5,69 +5,15 @@ using namespace std;
 
 #include "pyl_overloads.h"
 
-// Call this function from python
+// Callable from python
 int testArgs(int x, int y) {
 	return x + y;
 }
 
-// Expose this class in python
-struct Foo {
-	float getFloat(int x) {
-		return float(x);
-	}
-	void testVoid1(int x) {
-		x++;
-	}
-	void testVoid2() {
-		int x(0);
-		x++;
-	}
-	int testVoid3() {
-		return 1;
-	}
-};
-
-// You can pass one of these back and forth
-// between the interpreter and host program
-struct Vector3
-{
-    float x, y, z;
-public:
-    Vector3(int X=0.f, float Y=0.f, float Z=0.f) : 
-		x(X), y(Y), z(Z)
-	{}
-	float len(){
-		return sqrt(x*x + y*y + z*z);
-	}
-	float& operator[](int idx){
-		return ((float *)this)[idx];
-	}
-};
-
-// Implementation of conversion/allocation functions
-namespace Python
-{
-	// Convert a PyObjectobject to a Vector3
-	// this won't work unless the PyObject
-	// is really a list with at least 3 elements
-    bool convert(PyObject * o, Vector3& v){
-		return convert_buf(o, (float *)&v, 3); 
-    }
-
-	// Convert a Vector3 to a PyList
-	PyObject * alloc_pyobject(Vector3 v){
-		PyObject * pyVec = PyList_New(3);
-		for (int i=0; i<3; i++)
-			PyList_SetItem(pyVec, i, alloc_pyobject(v[i]));
-		return pyVec;
-	}
-}
-
 // You can call this function
-// from python by passing a list
-// with at least three floats
-// It'll normalize them and return
-// the result as a list of three floats
+// From python; see the implementation
+// of the c++ - python conversions
+// at the bottom of this file
 Vector3 testOverload(Vector3 v){
 	Vector3 nrm_v = v;
 	for (int i=0; i<3; i++)
@@ -75,8 +21,51 @@ Vector3 testOverload(Vector3 v){
 	return nrm_v;
 }
 
-// We'll be exposing this instance to Python
-Foo g_Foo;
+// You can pass one of these back and forth
+// between the interpreter and host program
+struct Vector3
+{
+	// Three float members
+    float x{0};
+	float y{0};
+	float z{0};
+
+	// Vector length
+	float len(){
+		return sqrt(x*x + y*y + z*z);
+	}
+
+	// Element access
+	float& operator[](int idx){
+		return ((float *)this)[idx];
+	}
+};
+
+// Expose this class in python
+class Foo {
+	Vector3 m_Vec3;
+public:
+	// get m_Float member
+	float getFloat() {
+		return m_Float;
+	}
+
+	// get m_Vec3 member
+	Vector3 getVec(){
+		return m_Vec3;
+	}
+
+	// set m_Vec3 member
+	void setVec(Vector3 v){
+		m_Vec = v;
+	}
+
+	// normalize m_Vec3 member
+	void normalizeVec(){
+		// testOverload already does this
+		m_Vec = testOverload(m_Vec);
+	}
+};
 
 bool ExposeFuncs() {
 	// add testArgs(x, y): to the PyLiaison module
@@ -87,6 +76,14 @@ bool ExposeFuncs() {
  
 	// Register the Foo class
 	Python::Register_Class<Foo, __LINE__>("Foo");
+
+	// Register Foo::getFloat(int) as a member function of Foo
+	std::function<float(Foo *)> fooFn(&Foo::getFloat);
+	Python::Register_Mem_Function<Foo, __LINE__>("getFloat", fooFn, "Testing a member function");
+
+	// Register Foo::getFloat(int) as a member function of Foo
+	std::function<flo(Foo *)> fooFn(&Foo::getFloat);
+	Python::Register_Mem_Function<Foo, __LINE__>("getFloat", fooFn, "Testing a member function");
 
 	// Register Foo::getFloat(int) as a member function of Foo
 	std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
@@ -131,4 +128,23 @@ int main() {
 	Python::RunCmd("print(g_Foo.testVoid3())");
 
 	return 0;
+}
+
+// Implementation of conversion/allocation functions
+namespace Python
+{
+	// Convert a PyObjectobject to a Vector3
+	// this won't work unless the PyObject
+	// is really a list with at least 3 elements
+    bool convert(PyObject * o, Vector3& v){
+		return convert_buf(o, (float *)&v, 3); 
+    }
+
+	// Convert a Vector3 to a PyList
+	PyObject * alloc_pyobject(Vector3 v){
+		PyObject * pyVec = PyList_New(3);
+		for (int i=0; i<3; i++)
+			PyList_SetItem(pyVec, i, alloc_pyobject(v[i]));
+		return pyVec;
+	}
 }
