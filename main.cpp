@@ -36,9 +36,12 @@ public:
 	float len(){
 		return sqrt(x*x + y*y + z*z);
 	}
+	float& operator[](int idx){
+		return ((float *)this)[idx];
+	}
 };
 
-// Bar conversion implementation
+// Implementation of conversion/allocation functions
 namespace Python
 {
 	// Convert a PyObjectobject to a Vector3
@@ -47,14 +50,26 @@ namespace Python
     bool convert(PyObject * o, Vector3& v){
 		return convert_buf(o, (float *)&v, 3); 
     }
+
+	// Convert a Vector3 to a PyList
+	PyObject * alloc_pyobject(Vector3 v){
+		PyObject * pyVec = PyList_New(3);
+		for (int i=0; i<3; i++)
+			PyList_SetItem(pyVec, i, alloc_pyobject(v[i]));
+		return pyVec;
+	}
 }
 
 // You can call this function
-// from python by passing an int
-// in place of b 
-float testOverload(Vector3 v){
-	std::cout << v.len() << std::endl;
-	return v.len();
+// from python by passing a list
+// with at least three floats
+// It'll normalize them and return
+// the result as a list of three floats
+Vector3 testOverload(Vector3 v){
+	Vector3 nrm_v = v;
+	for (int i=0; i<3; i++)
+		nrm_v[i] /= v.len();
+	return nrm_v;
 }
 
 Foo g_Foo;
@@ -95,7 +110,6 @@ int main() {
 	Python::RunCmd("print(g_Foo)");
 	Python::RunCmd("print(g_Foo())");
 	Python::RunCmd("print(g_Foo.getFloat(2))");
-
 
 	Python::RunCmd("print(g_Foo.testVoid1(2))");
 	Python::RunCmd("print(g_Foo.testVoid2())");

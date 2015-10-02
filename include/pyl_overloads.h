@@ -18,4 +18,7 @@ namespace Python
     // Declare the conversion
 	// (by reference, not pointer)
 	bool convert(PyObject * o, Vector3& v);
+
+	// Declare allocation
+	PyObject * alloc_pyobject(Vector3 v);
 }
