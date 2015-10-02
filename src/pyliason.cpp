@@ -214,6 +214,7 @@ namespace Python {
 			val = PyUnicode_AsUTF8(obj);
 			return true;
 		}
+		return false;
 	}
 
 	bool convert(PyObject *obj, std::vector<char> &val) {

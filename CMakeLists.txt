@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(PyLiaison)
 
-set(CMAKE_CXX_FLAGS "-std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 
 if (WIN32)
 	set(PYTHON_LIBRARY C:/Python35/libs/python35_d.lib)

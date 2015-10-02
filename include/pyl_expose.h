@@ -83,7 +83,7 @@ namespace Python
 		{
 			std::tuple<Args...> tup;
 			convert(a, tup);
-			R rVal = call<R>(fn, tup);
+			R rVal = invoke(fn, tup);
 
 			return alloc_pyobject(rVal);
 		};
@@ -99,7 +99,7 @@ namespace Python
 		{
 			std::tuple<Args...> tup;
 			convert(a, tup);
-			call<void>(fn, tup);
+			invoke(fn, tup);
 
 			Py_INCREF(Py_None);
 			return Py_None;
@@ -146,16 +146,23 @@ namespace Python
 		assert(PyCapsule_CheckExact(capsule));
 		return static_cast<C *>(PyCapsule_GetPointer(capsule, NULL));
 	}
-
+#include <iostream>
 	// Case 1
 	template <typename C, size_t idx, typename R, typename ... Args>
-	static void Register_Mem_Function(std::string methodName, std::function<R(C *, Args...)> fn, std::string docs = "")
+	static void Register_Mem_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
-			convert(a, tup); // Can I prepend the pointer to this tuple?
-			R rVal = call_C<C, R>(fn, _getCapsulePtr<C>(s), tup);
+			std::get<0>(tup) = _getCapsulePtr<C>(s);
 
+			// recurse till the first element, getting args from a
+			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
+		
+			// Invoke function, get retVal	
+			R rVal = invoke(fn, tup);
+
+			// convert rVal to PyObject, return
 			return alloc_pyobject(rVal);
 		};
 		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_VARARGS, docs);
@@ -163,13 +170,20 @@ namespace Python
 
 	// Case 2
 	template <typename C, size_t idx, typename ... Args>
-	static void Register_Mem_Function(std::string methodName, std::function<void(C *, Args...)> fn, std::string docs = "")
+	static void Register_Mem_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
-			convert(a, tup); // Can I prepend the pointer to this tuple?
-			callv_C<C>(fn, _getCapsulePtr<C>(s), tup);
+			std::get<0>(tup) = _getCapsulePtr<C>(s);
 
+			// recurse till the first element, getting args from a
+			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
+		
+			// invoke function
+			invoke(fn, tup);
+
+			// Return None
 			Py_INCREF(Py_None);
 			return Py_None;
 		};
@@ -181,6 +195,7 @@ namespace Python
 	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// Nothing special here
             R rVal = fn(_getCapsulePtr<C>(s));
 
 			return alloc_pyobject(rVal);
@@ -193,6 +208,7 @@ namespace Python
 	static void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// Nothing special here
             fn(_getCapsulePtr<C>(s));
 
 			Py_INCREF(Py_None);
@@ -249,6 +265,11 @@ namespace Python
 
 		// Make a variable in the module out of the new py object
 		int success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
+		if (!success){
+			std::string modName("module");
+			convert(PyObject_Str(mod), modName);
+			std::cout << "Error adding attr " << name << " to module " << modName << std::endl;
+		}
 
 		// Right now I don't know why we should keep them
 		it->second.Instances.push_back({ obj, name });

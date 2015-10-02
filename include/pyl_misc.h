@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <string>
-
+#include <utility>
 namespace Python
 {
     // This feels gross
@@ -17,110 +17,24 @@ namespace Python
 		return ret;
 	}
 
-    // This was stolen from stack overflow user irdjan
-    // it lets functions be called directly with a std::tuple
-    
-	// implementation details, users never invoke these directly
-	namespace detail
-	{
-		template <typename R, typename F, typename Tuple, bool Done, int Total, int... N>
-		struct call_impl
-		{
-			static R call(F f, Tuple && t)
-			{
-				return call_impl<R, F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call(f, std::forward<Tuple>(t));
-			}
-		};
-
-		template <typename R, typename F, typename Tuple, int Total, int... N>
-		struct call_impl<R, F, Tuple, true, Total, N...>
-		{
-			static R call(F f, Tuple && t)
-			{
-				return f(std::get<N>(std::forward<Tuple>(t))...);
-			}
-		};
+	// Invoke some callable object with a std::tuple
+	// Note that everything here is computed at compile time
+	template<typename Func, typename Tup, std::size_t... index>
+	decltype(auto) invoke_helper(Func&& func, Tup&& tup, std::index_sequence<index...>){
+		return func(std::get<index>(std::forward<Tup>(tup))...);
 	}
 
-	// user invokes this
-	template <typename R, typename F, typename Tuple>
-	R call(F f, Tuple && t)
-	{
-		typedef typename std::decay<Tuple>::type ttype;
-		return detail::call_impl<R, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call(f, std::forward<Tuple>(t));
+	template<typename Func, typename Tup>
+	decltype(auto) invoke(Func&& func, Tup&& tup){
+		constexpr auto Size = std::tuple_size<typename std::decay<Tup>::type>::value;
+		return 
+			invoke_helper(std::forward<Func>(func), std::forward<Tup>(tup), std::make_index_sequence<Size>{});
 	}
-
-	// The above for classes, which I wish I didn't have to do
-
-	// This was stolen from stack overflow user irdjan
-	// it lets functions be called directly with a std::tuple
-
-	// implementation details, users never invoke these directly
-	namespace detail
-	{
-		template <class C, typename R, typename F, typename Tuple, bool Done, int Total, int... N>
-		struct call_impl_C
-		{
-			static R call_C(F f, C * c, Tuple && t)
-			{
-				return call_impl_C<C, R, F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call_C(f, c, std::forward<Tuple>(t));
-			}
-		};
-
-		template <typename C, typename R, typename F, typename Tuple, int Total, int... N>
-		struct call_impl_C<C, R, F, Tuple, true, Total, N...>
-		{
-			static R call_C(F f, C * c, Tuple && t)
-			{
-				return f(c, std::get<N>(std::forward<Tuple>(t))...);
-			}
-		};
-	}
-
-	// user invokes this
-	template <typename C, typename R, typename F, typename Tuple>
-	R call_C(F f, C * c, Tuple && t)
-	{
-		typedef typename std::decay<Tuple>::type ttype;
-		return detail::call_impl_C<C, R, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call_C(f, c,std::forward<Tuple>(t));
-	}
-   
-	// void
-	namespace detail
-	{
-		template <class C, typename F, typename Tuple, bool Done, int Total, int... N>
-		struct call_implv_C
-		{
-			static void callv_C(F f, C * c, Tuple && t)
-			{
-				call_implv_C<C, F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::callv_C(f, c, std::forward<Tuple>(t));
-			}
-		};
-
-		template <typename C, typename F, typename Tuple, int Total, int... N>
-		struct call_implv_C<C, F, Tuple, true, Total, N...>
-		{
-			static void callv_C(F f, C * c, Tuple && t)
-			{
-				f(c, std::get<N>(std::forward<Tuple>(t))...);
-			}
-		};
-	}
-
-	// user invokes this
-	template <typename C, typename F, typename Tuple>
-	void callv_C(F f, C * c, Tuple && t)
-	{
-		typedef typename std::decay<Tuple>::type ttype;
-		detail::call_implv_C<C, F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::callv_C(f, c, std::forward<Tuple>(t));
-	}
-
 
     // This was also stolen from stack overflow
     // but I'm hoping to phase it out. It allows me to expose
     // std::functions as function pointers, which python
     // wants for its PyMethodDef buffer
-
 	template <const size_t _UniqueId, typename _Res, typename... _ArgTypes>
 	struct fun_ptr_helper
 	{

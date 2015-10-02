@@ -3,14 +3,30 @@ using namespace std;
 
 #include "pyliason.h"
 
+#include "pyl_overloads.h"
+
 #include <glm/glm.hpp>
+
+
+class Bar{
+    int x;
+public:
+    Bar(){}
+};
+
+namespace Python
+{
+    bool convert(PyObject * o, Bar& b){
+        return false;
+    }
+}
 
 int testArgs(int x, int y) {
 	return x + y;
 }
 
 bool testOverload(glm::vec3 v){
-	v.x=0.f;
+	v.r=0.f;
 	return true;
 }
 
@@ -30,12 +46,18 @@ struct Foo {
 	}
 };
 
+bool testOverload2(Bar b){
+    return false;
+}
+
 Foo g_Foo;
 
 bool ExposeFuncs() {
 	Py_Add_Func("testArgs", testArgs, "test adding two args");
 
-	Py_Add_Func("testOverload", testOverload, "can I overload a conversion?");   
+	Py_Add_Func("testOverload", testOverload, "can I overload a conversion?");
+    
+    Py_Add_Func("testOverload2", testOverload2, "where do I have to implement it?");
  
 	Python::Register_Class<Foo, __LINE__>("Foo");
 
@@ -49,6 +71,8 @@ bool ExposeFuncs() {
 	Python::Register_Mem_Function<Foo, __LINE__>("testVoid2", &Foo::testVoid2, "Testing a member function");
 
 	Python::Register_Mem_Function<Foo, int, __LINE__>("testVoid3", &Foo::testVoid3, "Testing a member function");
+
+
 	return true;
 }
 
@@ -63,11 +87,12 @@ int main() {
 	Python::Expose_Object(&g_Foo, "g_Foo");
 
 	// TODO test reference counts
-	//std::cout << Python::GetTotalRefCount() << std::endl;
+	std::cout << &g_Foo << std::endl;
 	Python::RunCmd("print(g_Foo)");
 	Python::RunCmd("print(g_Foo())");
 	Python::RunCmd("print(g_Foo.getFloat(2))");
-	
+
+
 	Python::RunCmd("print(g_Foo.testVoid1(2))");
 	Python::RunCmd("print(g_Foo.testVoid2())");
 	Python::RunCmd("print(g_Foo.testVoid3())");
