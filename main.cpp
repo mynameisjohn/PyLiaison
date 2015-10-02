@@ -5,10 +5,12 @@ using namespace std;
 
 #include "pyl_overloads.h"
 
+// Call this function from python
 int testArgs(int x, int y) {
 	return x + y;
 }
 
+// Expose this class in python
 struct Foo {
 	float getFloat(int x) {
 		return float(x);
@@ -25,7 +27,8 @@ struct Foo {
 	}
 };
 
-// We'll convert a PyInt to this
+// You can pass one of these back and forth
+// between the interpreter and host program
 struct Vector3
 {
     float x, y, z;
@@ -72,19 +75,24 @@ Vector3 testOverload(Vector3 v){
 	return nrm_v;
 }
 
+// We'll be exposing this instance to Python
 Foo g_Foo;
 
 bool ExposeFuncs() {
+	// add testArgs(x, y): to the PyLiaison module
 	Py_Add_Func("testArgs", testArgs, "test adding two args");
 
+	// add testOverload(v): to the PyLiaison module
     Py_Add_Func("testOverload", testOverload, "where do I have to implement it?");
  
+	// Register the Foo class
 	Python::Register_Class<Foo, __LINE__>("Foo");
 
+	// Register Foo::getFloat(int) as a member function of Foo
 	std::function<float(Foo *, int)> fooFn(&Foo::getFloat);
 	Python::Register_Mem_Function<Foo, __LINE__>("getFloat", fooFn, "Testing a member function");
 
-	// TODO fix void functions
+	// Same for all these
 	std::function<void(Foo *, int)> fooFn2(&Foo::testVoid1);
 	Python::Register_Mem_Function<Foo, __LINE__>("testVoid1", fooFn2, "Testing a member function");
 
@@ -96,26 +104,31 @@ bool ExposeFuncs() {
 }
 
 int main() {
+	// Call the above function
 	ExposeFuncs();
 
 	// All exposed functions should be exposed before this call
 	Python::initialize();
 
+	// Call testArgs with 1 and 2
 	Python::RunCmd("print(testArgs(1,2))");
 
+	// Call testOverload, passing in a Vector3 and getting one back
+	Python::RunCmd("print(testOverload([1.,2.,3.]))");
+
+	// Expose the g_Foo instance of Foo
 	Python::Expose_Object(&g_Foo, "g_Foo");
 
 	// TODO test reference counts
 	std::cout << &g_Foo << std::endl;
 	Python::RunCmd("print(g_Foo)");
 	Python::RunCmd("print(g_Foo())");
-	Python::RunCmd("print(g_Foo.getFloat(2))");
 
+	// Test member functions of Foo
+	Python::RunCmd("print(g_Foo.getFloat(2))");
 	Python::RunCmd("print(g_Foo.testVoid1(2))");
 	Python::RunCmd("print(g_Foo.testVoid2())");
 	Python::RunCmd("print(g_Foo.testVoid3())");
-
-	Python::RunCmd("print(testOverload([1.,2.,3.]))");
 
 	return 0;
 }
