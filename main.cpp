@@ -5,29 +5,8 @@ using namespace std;
 
 #include "pyl_overloads.h"
 
-#include <glm/glm.hpp>
-
-
-class Bar{
-    int x;
-public:
-    Bar(){}
-};
-
-namespace Python
-{
-    bool convert(PyObject * o, Bar& b){
-        return false;
-    }
-}
-
 int testArgs(int x, int y) {
 	return x + y;
-}
-
-bool testOverload(glm::vec3 v){
-	v.r=0.f;
-	return true;
 }
 
 struct Foo {
@@ -46,8 +25,36 @@ struct Foo {
 	}
 };
 
-bool testOverload2(Bar b){
-    return false;
+// We'll convert a PyInt to this
+struct Vector3
+{
+    float x, y, z;
+public:
+    Vector3(int X=0.f, float Y=0.f, float Z=0.f) : 
+		x(X), y(Y), z(Z)
+	{}
+	float len(){
+		return sqrt(x*x + y*y + z*z);
+	}
+};
+
+// Bar conversion implementation
+namespace Python
+{
+	// Convert a PyObjectobject to a Vector3
+	// this won't work unless the PyObject
+	// is really a list with at least 3 elements
+    bool convert(PyObject * o, Vector3& v){
+		return convert_buf(o, (float *)&v, 3); 
+    }
+}
+
+// You can call this function
+// from python by passing an int
+// in place of b 
+float testOverload(Vector3 v){
+	std::cout << v.len() << std::endl;
+	return v.len();
 }
 
 Foo g_Foo;
@@ -55,9 +62,7 @@ Foo g_Foo;
 bool ExposeFuncs() {
 	Py_Add_Func("testArgs", testArgs, "test adding two args");
 
-	Py_Add_Func("testOverload", testOverload, "can I overload a conversion?");
-    
-    Py_Add_Func("testOverload2", testOverload2, "where do I have to implement it?");
+    Py_Add_Func("testOverload", testOverload, "where do I have to implement it?");
  
 	Python::Register_Class<Foo, __LINE__>("Foo");
 
@@ -71,7 +76,6 @@ bool ExposeFuncs() {
 	Python::Register_Mem_Function<Foo, __LINE__>("testVoid2", &Foo::testVoid2, "Testing a member function");
 
 	Python::Register_Mem_Function<Foo, int, __LINE__>("testVoid3", &Foo::testVoid3, "Testing a member function");
-
 
 	return true;
 }
