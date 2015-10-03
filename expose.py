@@ -1,4 +1,4 @@
-# a test script for PyLiaison
+﻿# a test script for PyLiaison
 
 # PyLiaison is importable anywhere
 from PyLiaison import *
@@ -32,6 +32,7 @@ def checkFoo():
 g_Vec3 = None
 
 def SetVec(x, y, z):
+	global g_Vec3
 	g_Vec3 = [x, y, z]
 	print(g_Vec3)
 

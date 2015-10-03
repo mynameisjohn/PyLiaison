@@ -266,7 +266,7 @@ namespace Python
 
 		// Make a variable in the module out of the new py object
 		int success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
-		if (!success){
+		if (success != 0){
 			std::string modName("module");
 			convert(PyObject_Str(mod), modName);
 			std::cout << "Error adding attr " << name << " to module " << modName << std::endl;
