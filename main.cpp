@@ -10,16 +10,6 @@ int testArgs(int x, int y) {
 	return x + y;
 }
 
-// You can call this function
-// From python; see the implementation
-// of the c++ <==> python conversions
-// at the bottom of this file
-Vector3 testOverload(Vector3 v){
-	Vector3 nrm_v = v;
-	for (int i=0; i<3; i++)
-		nrm_v[i] /= v.len();
-	return nrm_v;
-}
 
 // You can pass one of these back and forth
 // between the interpreter and host program
@@ -41,12 +31,29 @@ struct Vector3
 	}
 };
 
+// You can call this function; it
+// takes in a list of three floats
+// from python, interprets it as a Vector3,
+// and normalizes it.
+// See the implementation
+// of the c++ <==> python conversions
+// at the bottom of this file
+Vector3 testOverload(Vector3 v){
+	Vector3 nrm_v = v;
+	for (int i=0; i<3; i++)
+		nrm_v[i] /= v.len();
+	return nrm_v;
+}
+
 // Expose this class in python
 class Foo {
 	Vector3 m_Vec3;
 
-	// These are callable from Python
 public:
+	// Useless default ctor
+	// The rest are python callable
+	Foo(){}
+	
 	// get m_Vec3 member
 	Vector3 getVec(){
 		return m_Vec3;
@@ -54,13 +61,13 @@ public:
 
 	// set m_Vec3 member
 	void setVec(Vector3 v){
-		m_Vec = v;
+		m_Vec3 = v;
 	}
 
 	// normalize m_Vec3 member
 	void normalizeVec(){
 		// testOverload already does this
-		m_Vec = testOverload(m_Vec);
+		m_Vec3 = testOverload(m_Vec3);
 	}
 };
 
@@ -84,7 +91,7 @@ int main()
 	Python::RunCmd("print(testOverload([1.,2.,3.]))");
 
 	// Make a foo instance
-	Foo fOne
+	Foo fOne;
 
 	// Expose the Foo instance fOne
 	// into the main module
@@ -103,7 +110,7 @@ int main()
 	
 	// Now load up our custom module
 	// note that the relative path may be wrong
-	auto myMod = Python::Object::from_script("../script.py");
+	auto myMod = Python::Object::from_script("../expose.py");
 
 	// Hello world
 	myMod.call_function("sayHello");
@@ -120,12 +127,13 @@ int main()
 		std::cout << "Host code was unable to expose Foo object!" << std::endl;
 
 	// Set the vec3 object in the module
-	myMod.call_function("setVec", 1.0, 0.0, 0.0);
+	float x(1), y(0), z(0);
+	myMod.call_function("setVec", x, y, z);
 
 	// Retrieve it from the module and see what we got
 	Vector3 pyVec;
 	myMod.get_attr("g_Vec3").convert(pyVec);
-	std::cout << pyVec[0] << " better be 1.0" << std::endl;
+	std::cout << pyVec[0] << " better be " << x << std::endl;
 
 	// You can construct Foo objects within the module
 	// without having to expose them
@@ -156,8 +164,14 @@ void ExposeFuncs() {
 	std::function<void(Foo *)> Foo_nrmVec(&Foo::normalizeVec);
 	Python::Register_Mem_Function<Foo, __LINE__>("normalizeVec", Foo_nrmVec,
 		"normalize the m_Vec3 member of a Foo instance");
-}
 
+	// Expose one function of Vector3, just to prove it's possible
+	Python::Register_Class<Vector3, __LINE__>("Vector3");
+
+	std::function<float(Vector3 *)> Vec3_len(&Vector3::len);
+	Python::Register_Mem_Function<Foo, __LINE__>("len", Vec3_len,
+		"get the length, or magnitude, of the vector");
+}
 
 // Implementation of conversion/allocation functions
 namespace Python

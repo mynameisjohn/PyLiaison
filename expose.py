@@ -39,4 +39,5 @@ def FooTest(fPtr):
 	f = Foo(fPtr)
 	f.setVec(g_Vec3)
 	print('We got a foo object at ' + str(f()))
-	print('It\'s vector is ' + str(Foo.getVec()))
+	print('Its vector is ' + str(Foo.getVec()))
+	print('Its length is ' + str(Foo.getvec().length()))
