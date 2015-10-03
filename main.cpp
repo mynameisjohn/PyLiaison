@@ -103,17 +103,16 @@ int main()
 	Python::RunCmd("print(g_Foo())");
 
 	// Test member functions of Foo
+	Python::RunCmd("print(g_Foo.setVec([1.,3.,5.]))");
 	Python::RunCmd("print(g_Foo.getVec())");
-	Python::RunCmd("print(g_Foo.testVoid1(2))");
-	Python::RunCmd("print(g_Foo.testVoid2())");
-	Python::RunCmd("print(g_Foo.testVoid3())");
+	Python::RunCmd("print(g_Foo.normalizeVec())");
 	
 	// Now load up our custom module
 	// note that the relative path may be wrong
 	auto myMod = Python::Object::from_script("../expose.py");
 
 	// Hello world
-	myMod.call_function("sayHello");
+	myMod.call_function("SayHello");
 
 	// Expose the Foo instance into another module
 	Python::Expose_Object(&fOne, "c_Foo", myMod.get());
@@ -128,7 +127,7 @@ int main()
 
 	// Set the vec3 object in the module
 	float x(1), y(0), z(0);
-	myMod.call_function("setVec", x, y, z);
+	myMod.call_function("SetVec", x, y, z);
 
 	// Retrieve it from the module and see what we got
 	Vector3 pyVec;
@@ -168,8 +167,8 @@ void ExposeFuncs() {
 	// Expose one function of Vector3, just to prove it's possible
 	Python::Register_Class<Vector3, __LINE__>("Vector3");
 
-	std::function<float(Vector3 *)> Vec3_len(&Vector3::len);
-	Python::Register_Mem_Function<Vector3, __LINE__>("len", Vec3_len,
+	std::function<float(Vector3 *)> Vec3_len(&Vector3::len); // len is a keyword
+	Python::Register_Mem_Function<Vector3, __LINE__>("length()", Vec3_len,
 		"get the length, or magnitude, of the vector");
 }
 
