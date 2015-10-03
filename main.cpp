@@ -169,7 +169,7 @@ void ExposeFuncs() {
 	Python::Register_Class<Vector3, __LINE__>("Vector3");
 
 	std::function<float(Vector3 *)> Vec3_len(&Vector3::len);
-	Python::Register_Mem_Function<Foo, __LINE__>("len", Vec3_len,
+	Python::Register_Mem_Function<Vector3, __LINE__>("len", Vec3_len,
 		"get the length, or magnitude, of the vector");
 }
 

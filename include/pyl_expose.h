@@ -146,9 +146,10 @@ namespace Python
 		assert(PyCapsule_CheckExact(capsule));
 		return static_cast<C *>(PyCapsule_GetPointer(capsule, NULL));
 	}
-#include <iostream>
+
 	// Case 1
-	template <typename C, size_t idx, typename R, typename ... Args>
+	template <typename C, size_t idx, typename R, typename ... Args,
+	typename std::enable_if<sizeof...(Args) != 1>::type = 0>
 	static void Register_Mem_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
@@ -191,7 +192,7 @@ namespace Python
 	}
 
 	// Case 3
-	template <typename C, typename R, size_t idx>
+	template <typename C, size_t idx, typename R>
 	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
