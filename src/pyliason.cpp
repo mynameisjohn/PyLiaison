@@ -252,6 +252,12 @@ namespace Python {
 		val = float(d);
 		return ret;
 	}
+	
+	// If the client knows what to do, let 'em deal with it
+	bool convert(PyObject * obj, Python::Object pyObj){
+		pyObj = Python::Object(obj);
+		return pyObj.get() != nullptr;
+	}
 
 	std::map<std::type_index, ExposedClass> ExposedClasses;
 	std::string ClassesDef; // Do I still need this?

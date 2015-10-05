@@ -45,6 +45,14 @@ Vector3 testOverload(Vector3 v){
 	return nrm_v;
 }
 
+// Test unpacking a PyTuple
+void testPyTup(Python::Object obj){
+	// If you make a mistake here it's on you
+	std::tuple<int, float, int> t;
+	obj.convert(t);
+//	std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
+}
+
 // Expose this class in python
 class Foo {
 	Vector3 m_Vec3;
@@ -89,6 +97,8 @@ int main()
 
 	// Call testOverload, passing in a Vector3 and getting one back
 	Python::RunCmd("print(testOverload([1.,2.,3.]))");
+
+	Python::RunCmd("print(testPyTup((1,2.,3)))");
 
 	// Make a foo instance
 	Foo fOne;
@@ -152,8 +162,11 @@ void ExposeFuncs() {
 	// add testOverload(v): to the PyLiaison module
     //Py_Add_Func("testOverload", Python::make_function(testArgs), "where do I have to implement it?");
 	Python::Register_Function<struct testOverloadT>("testOverload", 
-		Python::make_function(testOverload), "test passing args");
+		Python::make_function(testOverload), "test overloading a PyObject * conversion");
  
+	Python::Register_Function<struct testPyTupT>("testPyTup", 
+		Python::make_function(testPyTup), "test passing something the host converts");
+
 	// Register the Foo class
 	Python::Register_Class<Foo>("Foo");
 

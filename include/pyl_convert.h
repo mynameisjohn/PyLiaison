@@ -28,20 +28,9 @@ namespace Python
 		return true;
 	}
 
-	// This gets invoked on calls to member functions, which require the instance ptr
-    // It may be dangerous, since any pointer type will be interpreted
-    // as a PyCObject, but so far it's been useful (do I need the reverse function?)
-	template<typename T>
-	bool convert(PyObject * obj, T *& val) {
-		//if (!PyCapsule_CheckExact(obj))
-		val = static_cast<T *>(PyCapsule_GetPointer(obj, NULL));
-		return true;
-	}
-
 	// Convert a PyObject to an float.
 	bool convert(PyObject *obj, double &val);
 	bool convert(PyObject *obj, float &val);
-
 
 	// Add to Tuple functions
 	// These recurse to an arbitrary base b
@@ -132,11 +121,6 @@ namespace Python
         return convert_buf<T>(obj, arr.data(), int(N));
     }
 
-    // Convert a PyObject to a std::array
-//    template<class T, size_t N> bool convert(PyObject *obj, std::array<T, N>& arr){
-//        return convert_buf<T>(obj, arr.data(), int(N)>;
-//    }
-
 	// Generic convert function used by others
 	template<class T> bool generic_convert(PyObject *obj,
 		const std::function<bool(PyObject*)> &is_obj,
@@ -148,6 +132,20 @@ namespace Python
 		return true;
 	}
 
+	// Convert to a Python::Object; useful if function can unpack it
+	class Object;
+	bool convert(PyObject * obj, Python::Object pyObj);
+
+	// This gets invoked on calls to member functions, which require the instance ptr
+    // It may be dangerous, since any pointer type will be interpreted
+    // as a PyCObject, but so far it's been useful. To protect yourself from collisions,
+	// try and specialize any type that you don't want getting caught in this conversion
+	template<typename T>
+	bool convert(PyObject * obj, T *& val) {
+		//if (!PyCapsule_CheckExact(obj))
+		val = static_cast<T *>(PyCapsule_GetPointer(obj, NULL));
+		return true;
+	}
 
 	// -------------- PyObject allocators ----------------
 
