@@ -34,14 +34,14 @@ namespace Python
 	extern std::string ModDocs;
    
 	// Add a new method def fo the Method Definitions of the module
-	template <size_t idx>
+	template <typename tag>
 	void _add_Method_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs)
 	{
         // We need to store these where they won't move
 		ExposedFunctions.push_back(pFn);
 
 		// now make the function pointer (TODO figure out these ids, or do something else)
-		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
+		PyCFunction fnPtr = get_fn_ptr<tag>(ExposedFunctions.back());
 
 		// You can key the methodName string to a std::function
 		MethodDef.AddMethod(methodName, fnPtr, methodFlags, docs);// , doc.empty() ? NULL : doc.c_str() );
@@ -58,7 +58,7 @@ namespace Python
 		it->second.AddMember(name, type, offset, flags, docs);
 	}
 
-	template <size_t idx, class C>
+	template <typename tag, class C>
 	void _add_Mem_Fn_Def(std::string methodName, PyFunc pFn, int methodFlags, std::string docs)
 	{
 		auto it = ExposedClasses.find(typeid(C));
@@ -69,14 +69,14 @@ namespace Python
 		ExposedFunctions.push_back(pFn);
 
 		// now make the function pointer (TODO figure out these ids, or do something else)
-		PyCFunction fnPtr = get_fn_ptr<idx>(ExposedFunctions.back());
+		PyCFunction fnPtr = get_fn_ptr<tag>(ExposedFunctions.back());
 
 		// Add function
 		it->second.AddMemberFn(methodName, fnPtr, methodFlags,  docs);
 	}
 
 	// Case 1: a straight up function that would look like : R fn( Args... ) { ... return R(); }
-	template <size_t idx, typename R, typename ... Args>
+	template <typename tag, typename R, typename ... Args>
 	static void Register_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
@@ -88,11 +88,11 @@ namespace Python
 			return alloc_pyobject(rVal);
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, METH_VARARGS, docs);
+		_add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
 	}
 
 	// Case 2: like above, but void return : void fn( Args... ) { ... return; }
-	template <size_t idx, typename ... Args>
+	template <typename tag, typename ... Args>
 	static void Register_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
@@ -105,11 +105,11 @@ namespace Python
 			return Py_None;
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, METH_VARARGS, docs);
+		_add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
 	}
 
 	// Case 3: returns R, no args : R fn() { ... return R(); }
-	template <size_t idx, typename R>
+	template <typename tag, typename R>
 	static void Register_Function(std::string methodName, std::function<R()> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
@@ -118,12 +118,12 @@ namespace Python
 			return alloc_pyobject(rVal);
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, METH_NOARGS, docs);
+		_add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 	}
 
 	// Case 4: returns void, no args : void fn() { ... hello world; }
-	template <size_t idx>
-	static void _add_Func(std::string methodName, std::function<void()> fn, std::string docs = "")
+	template <typename tag>
+	static void Register_Function(std::string methodName, std::function<void()> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
@@ -132,7 +132,7 @@ namespace Python
 			return Py_None;
 		};
 
-		_add_Method_Def<idx>(pFn, methodName, METH_NOARGS, docs);
+		_add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 	}
 
 	// Pretty ridiculous
@@ -148,7 +148,7 @@ namespace Python
 	}
 
 	// Case 1
-	template <typename C, size_t idx, typename R, typename ... Args,
+	template <typename C, typename tag, typename R, typename ... Args,
 	typename std::enable_if<sizeof...(Args) != 1, int>::type = 0>
 	static void Register_Mem_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 	{
@@ -166,11 +166,11 @@ namespace Python
 			// convert rVal to PyObject, return
 			return alloc_pyobject(rVal);
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_VARARGS, docs);
+		Python::_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
 	}
 
 	// Case 2
-	template <typename C, size_t idx, typename ... Args>
+	template <typename C, typename tag, typename ... Args>
 	static void Register_Mem_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
@@ -188,11 +188,11 @@ namespace Python
 			Py_INCREF(Py_None);
 			return Py_None;
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_VARARGS, docs);
+		Python::_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
 	}
 
 	// Case 3
-	template <typename C, size_t idx, typename R>
+	template <typename C, typename tag, typename R>
 	static void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
@@ -201,11 +201,11 @@ namespace Python
 
 			return alloc_pyobject(rVal);
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_NOARGS, docs);
+		Python::_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
 	}
 
 	// Case 4
-	template <typename C, size_t idx>
+	template <typename C, typename tag>
 	static void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
@@ -215,7 +215,7 @@ namespace Python
 			Py_INCREF(Py_None);
 			return Py_None;
 		};
-		Python::_add_Mem_Fn_Def<idx, C>(methodName, pFn, METH_NOARGS, docs);
+		Python::_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
 	}
 	
 	// This function generates a python class definition

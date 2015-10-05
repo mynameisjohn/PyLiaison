@@ -35,7 +35,7 @@ namespace Python
     // but I'm hoping to phase it out. It allows me to expose
     // std::functions as function pointers, which python
     // wants for its PyMethodDef buffer
-	template <const size_t _UniqueId, typename _Res, typename... _ArgTypes>
+	template <typename _UniqueTag, typename _Res, typename... _ArgTypes>
 	struct fun_ptr_helper
 	{
 	public:
@@ -74,12 +74,12 @@ namespace Python
 		function_type fn_;
 	};
 
-	template <const size_t _UniqueId, typename _Res, typename... _ArgTypes>
-	typename fun_ptr_helper<_UniqueId, _Res, _ArgTypes...>::pointer_type
+	template <typename _UniqueTag, typename _Res, typename... _ArgTypes>
+	typename fun_ptr_helper<_UniqueTag, _Res, _ArgTypes...>::pointer_type
 		get_fn_ptr(const std::function<_Res(_ArgTypes...)>& f)
 	{
-		fun_ptr_helper<_UniqueId, _Res, _ArgTypes...>::bind(f);
-		return fun_ptr_helper<_UniqueId, _Res, _ArgTypes...>::ptr();
+		fun_ptr_helper<_UniqueTag, _Res, _ArgTypes...>::bind(f);
+		return fun_ptr_helper<_UniqueTag, _Res, _ArgTypes...>::ptr();
 	}
 
 	template<typename T>

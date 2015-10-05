@@ -145,30 +145,34 @@ int main()
 // Expose all Python Functions
 void ExposeFuncs() {
 	// add testArgs(x, y): to the PyLiaison module
-	Py_Add_Func("testArgs", testArgs, "test adding two args");
+//	Py_Add_Func("testArgs", testArgs, "test adding two args");
+	Python::Register_Function<struct testArgsT>("testArgs", 
+		Python::make_function(testArgs), "test passing args");
 
 	// add testOverload(v): to the PyLiaison module
-    Py_Add_Func("testOverload", testOverload, "where do I have to implement it?");
+    //Py_Add_Func("testOverload", Python::make_function(testArgs), "where do I have to implement it?");
+	Python::Register_Function<struct testOverloadT>("testOverload", 
+		Python::make_function(testOverload), "test passing args");
  
 	// Register the Foo class
 	Python::Register_Class<Foo>("Foo");
 
 	// Register member functions of Foo
 	std::function<Vector3(Foo *)> Foo_getVec(&Foo::getVec);
-	Python::Register_Mem_Function<Foo, __LINE__>("getVec", Foo_getVec,
+	Python::Register_Mem_Function<Foo, struct Foo_getVecT>("getVec", Foo_getVec,
 		"Get the m_Vec3 member of a Foo instance");
 	std::function<void(Foo *, Vector3)> Foo_setVec(&Foo::setVec);
-	Python::Register_Mem_Function<Foo, __LINE__>("setVec", Foo_setVec,
+	Python::Register_Mem_Function<Foo, struct Foo_setVecT>("setVec", Foo_setVec,
 		"Set the m_Vec3 member of a Foo instance with a list");
 	std::function<void(Foo *)> Foo_nrmVec(&Foo::normalizeVec);
-	Python::Register_Mem_Function<Foo, __LINE__>("normalizeVec", Foo_nrmVec,
+	Python::Register_Mem_Function<Foo, struct Foo_nrmVecT>("normalizeVec", Foo_nrmVec,
 		"normalize the m_Vec3 member of a Foo instance");
 
 	// Expose one function of Vector3, just to prove it's possible
 	Python::Register_Class<Vector3>("Vector3");
 
 	std::function<float(Vector3 *)> Vec3_len(&Vector3::len); // len is a keyword
-	Python::Register_Mem_Function<Vector3, __LINE__>("length()", Vec3_len,
+	Python::Register_Mem_Function<Vector3, struct Vec3_lenT_>("length()", Vec3_len,
 		"get the length, or magnitude, of the vector");
 }
 
