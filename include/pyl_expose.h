@@ -149,7 +149,7 @@ namespace Python
 
 	// Case 1
 	template <typename C, size_t idx, typename R, typename ... Args,
-	typename std::enable_if<sizeof...(Args) != 1>::type = 0>
+	typename std::enable_if<sizeof...(Args) != 1, int>::type = 0>
 	static void Register_Mem_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 	{
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
@@ -219,7 +219,7 @@ namespace Python
 	}
 	
 	// This function generates a python class definition
-	template <class C, size_t idx>
+	template <class C>
 	static void Register_Class(std::string className) {
 		auto it = ExposedClasses.find(typeid(C));
 		if (it != ExposedClasses.end())

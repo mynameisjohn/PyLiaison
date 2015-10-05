@@ -151,7 +151,7 @@ void ExposeFuncs() {
     Py_Add_Func("testOverload", testOverload, "where do I have to implement it?");
  
 	// Register the Foo class
-	Python::Register_Class<Foo, __LINE__>("Foo");
+	Python::Register_Class<Foo>("Foo");
 
 	// Register member functions of Foo
 	std::function<Vector3(Foo *)> Foo_getVec(&Foo::getVec);
@@ -165,7 +165,7 @@ void ExposeFuncs() {
 		"normalize the m_Vec3 member of a Foo instance");
 
 	// Expose one function of Vector3, just to prove it's possible
-	Python::Register_Class<Vector3, __LINE__>("Vector3");
+	Python::Register_Class<Vector3>("Vector3");
 
 	std::function<float(Vector3 *)> Vec3_len(&Vector3::len); // len is a keyword
 	Python::Register_Mem_Function<Vector3, __LINE__>("length()", Vec3_len,
