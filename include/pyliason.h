@@ -42,4 +42,9 @@ namespace Python
 	
     // Invokes the above with a file from disk
     int RunFile(std::string fileName);
+
+	// Get the PyLiaison Module object
+	// TODO Make an arbitrary number of modules
+	// and have them gettable by clients
+	Object GetPyLiaisonModule();
 }

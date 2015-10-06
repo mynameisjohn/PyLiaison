@@ -43,3 +43,9 @@ def FooTest(fPtr):
 	f.setVec(g_Vec3)
 	print('We got a foo object at ' + str(f()))
 	print('Its vector is ' + str(f.getVec()))
+
+# This object is declared in
+# the pyliaison module, as in
+# PyLiaison.modFoo
+def TestModuleDecl():
+	print(str(modFoo) + ' lives in the PyLiaison module!')

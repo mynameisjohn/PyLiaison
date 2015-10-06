@@ -10,7 +10,6 @@ int testArgs(int x, int y) {
 	return x + y;
 }
 
-
 // You can pass one of these back and forth
 // between the interpreter and host program
 struct Vector3
@@ -98,7 +97,7 @@ int main()
 	// Call testOverload, passing in a Vector3 and getting one back
 	Python::RunCmd("print(testOverload([1.,2.,3.]))");
 
-	Python::RunCmd("print(testPyTup((1,2.,3)))");
+//	Python::RunCmd("print(testPyTup((1,2.,3)))");
 
 	// Make a foo instance
 	Foo fOne;
@@ -116,7 +115,13 @@ int main()
 	Python::RunCmd("print(g_Foo.setVec([1.,3.,5.]))");
 	Python::RunCmd("print(g_Foo.getVec())");
 	Python::RunCmd("print(g_Foo.normalizeVec())");
-	
+
+	// We can also expose objects directly into the PyLiaison module
+	// As long as we do this before a module that imports PyLiaison
+	// has been loaded, we have access to any variables predeclared
+	// into the module. So let's expose it into the PyLiaison module here
+	Python::Expose_Object(&fOne, "modFoo", Python::GetPyLiaisonModule().get());
+
 	// Now load up our custom module
 	// note that the relative path may be wrong
 	auto myMod = Python::Object::from_script("../expose.py");
@@ -124,7 +129,10 @@ int main()
 	// Hello world
 	myMod.call_function("SayHello");
 
-	// Expose the Foo instance into another module
+	// Verify that the object we exposed into the PyLiaison module is there
+	myMod.call_function("TestModuleDecl");
+
+	// Alternatively, you can expose the Foo object into this module
 	Python::Expose_Object(&fOne, "c_Foo", myMod.get());
 
 	// Verify that it was exposed
@@ -148,6 +156,7 @@ int main()
 	// without having to expose them
 	Foo fTwo;
 	myMod.call_function("FooTest", &fTwo);
+
 
 	return EXIT_SUCCESS;
 }

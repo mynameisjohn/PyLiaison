@@ -439,4 +439,12 @@ namespace Python {
 		Py_DECREF(refCount);
 		return ret;
 	}
+
+	// Check out the docs for PyImport and see if there's anything cool
+	Object GetPyLiaisonModule()
+	{
+		PyObject * plMod = PyImport_ImportModule(ModuleName.c_str());
+
+		return Object(plMod);
+	}
 }
