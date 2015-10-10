@@ -49,7 +49,7 @@ void testPyTup(Python::Object obj){
 	// If you make a mistake here it's on you
 	std::tuple<int, float, int> t;
 	obj.convert(t);
-//	std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
+	std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
 }
 
 // Expose this class in python
@@ -97,7 +97,7 @@ int main()
 	// Call testOverload, passing in a Vector3 and getting one back
 	Python::RunCmd("print(testOverload([1.,2.,3.]))");
 
-//	Python::RunCmd("print(testPyTup((1,2.,3)))");
+	Python::RunCmd("print(testPyTup((1,2.,3)))");
 
 	// Make a foo instance
 	Foo fOne;
@@ -156,7 +156,6 @@ int main()
 	// without having to expose them
 	Foo fTwo;
 	myMod.call_function("FooTest", &fTwo);
-
 
 	return EXIT_SUCCESS;
 }

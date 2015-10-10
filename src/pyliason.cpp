@@ -254,9 +254,14 @@ namespace Python {
 	}
 	
 	// If the client knows what to do, let 'em deal with it
-	bool convert(PyObject * obj, Python::Object pyObj){
+	bool convert(PyObject * obj, Python::Object& pyObj){
 		pyObj = Python::Object(obj);
-		return pyObj.get() != nullptr;
+		// I noticed that the incref is needed... not sure why?
+		if (auto ptr = pyObj.get()) {
+			Py_INCREF(ptr);
+			return true;
+		}
+		return false;
 	}
 
 	std::map<std::type_index, ExposedClass> ExposedClasses;

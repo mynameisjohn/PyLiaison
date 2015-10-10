@@ -134,7 +134,7 @@ namespace Python
 
 	// Convert to a Python::Object; useful if function can unpack it
 	class Object;
-	bool convert(PyObject * obj, Python::Object pyObj);
+	bool convert(PyObject * obj, Python::Object& pyObj);
 
 	// This gets invoked on calls to member functions, which require the instance ptr
     // It may be dangerous, since any pointer type will be interpreted
