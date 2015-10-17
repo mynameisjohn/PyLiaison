@@ -199,7 +199,7 @@ namespace Python
 		bool has_attr(const std::string &name);
         
         template<typename T>
-        bool set_attr(const std::string &name, T& obj){
+        bool set_attr(const std::string &name, T obj){
             PyObject * pyObj = alloc_pyobject(obj);
             int success = PyObject_SetAttrString(this->get(), name.c_str(), pyObj);
             return (success == 0);
