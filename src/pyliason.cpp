@@ -322,7 +322,7 @@ namespace Python {
 		m_TypeObject.tp_init = (initproc)PyClsInit;
 		m_TypeObject.tp_call = (ternaryfunc)PyClsCall;
 		m_TypeObject.tp_new = PyType_GenericNew;
-		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT;
+		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
 		m_TypeObject.tp_basicsize = sizeof(GenericPyClass);
 	}
 
