@@ -88,12 +88,13 @@ namespace Python
         if (!PySet_Check(obj))
             return false;
         PyObject *iter = PyObject_GetIter(obj);
-        PyObject *item = nullptr;
-        while (item = PyIter_Next(iter)){
+        PyObject *item = PyIter_Next(iter);
+        while (item){
             C val;
             if (!convert(item, val))
                 return false;
             s.insert(val);
+			item = PyIter_Next(iter);
         }
         return true;
     }
