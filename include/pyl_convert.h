@@ -3,10 +3,12 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <set>
 #include <array>
 
 #include <Python.h>
 
+#include "pyl_expose.h"
 #include "pyl_overloads.h"
 
 namespace Python
@@ -80,6 +82,21 @@ namespace Python
 		}
 		return true;
 	}
+    // Convert a PyObject to a std::set
+    template<class C>
+    bool convert(PyObject *obj, std::set<C>& s){
+        if (!PySet_Check(obj))
+            return false;
+        PyObject *iter = PyObject_GetIter(obj);
+        PyObject *item = nullptr;
+        while (item = PyIter_Next(iter)){
+            C val;
+            if (!convert(item, val))
+                return false;
+            s.insert(val);
+        }
+        return true;
+    }
 	// Convert a PyObject to a generic container.
 	template<class T, class C>
 	bool convert_list(PyObject *obj, C &container) {
@@ -216,6 +233,15 @@ namespace Python
 
 		return dict;
 	}
-
-	// TODO std::set? And unordered map/set?
+    
+    // Creates a PySet from a std::set
+    template<class C> PyObject *alloc_pyobject(const std::set<C>& s){
+        PyObject * pSet(PySet_New(NULL));
+        for (auto& i : s){
+            PySet_Add(pSet, alloc_pyobject(i));
+        }
+        return pSet;
+    }
+    
+    // TODO unordered maps/sets
 }
