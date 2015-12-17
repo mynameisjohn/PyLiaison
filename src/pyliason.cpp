@@ -34,10 +34,10 @@ namespace Python {
 	}
 
 	Object::Object(PyObject *obj) : py_obj(make_pyshared(obj)) {
-
 	}
 
 	Python::Object::pyshared_ptr Object::make_pyshared(PyObject *obj) {
+		Py_XINCREF(obj);
 		return pyshared_ptr(obj, [](PyObject *obj) { Py_XDECREF(obj); });
 	}
 
@@ -57,20 +57,21 @@ namespace Python {
 			file_path = file_path.substr(0, file_path.size() - 3);
 
 		// Try loading just the file name
-		PyObject *py_ptr(PyImport_ImportModule(file_path.c_str()));
-		if (py_ptr)
-			return{ py_ptr };
+		Python::Object py_ptr((PyImport_ImportModule(file_path.c_str())));
+		//PyObject *py_ptr;
+		if (py_ptr.get() != nullptr)
+			return std::move(py_ptr);
 
 		// If we didn't get it, see if the dir path is in PyPath
 		char arr[] = "path";
-		PyObject *path(PySys_GetObject(arr));
+		Python::Object path(PySys_GetObject(arr));
 		std::vector<std::string> curPath;
-		Python::convert(path, curPath);
+		Python::convert(path.get(), curPath);
 
 		// If it isn't add it to the path and try again
 		if (std::find(curPath.begin(), curPath.end(), base_path) == curPath.end()) {
 			pyunique_ptr pwd(PyUnicode_FromString(base_path.c_str()));
-			PyList_Append(path, pwd.get());
+			PyList_Append(path.get(), pwd.get());
 			return from_script(script_path);
 		}
 
