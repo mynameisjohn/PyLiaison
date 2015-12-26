@@ -80,13 +80,13 @@ namespace Python
 		// Instance struct
 		// Contains pointer to object
 		// and python var name
-		struct Instance
-		{
-			voidptr_t c_ptr;
-			std::string pyname;
-		};
+		//struct Instance
+		//{
+		//	voidptr_t c_ptr;
+		//	std::string pyname;
+		//};
 		// A list of exposed C++ object pointers (why?)
-		std::list<Instance> Instances;
+		//std::list<Instance> Instances;
 
 		// The name of the python class
 		std::string PyClassName;
@@ -231,7 +231,8 @@ namespace Python
 		* \return Object representing the loaded script.
 		*/
 		static Object from_script(const std::string &script_path);
-	private:
+
+	protected:
 		typedef std::shared_ptr<PyObject> pyshared_ptr;
 
 		PyObject *load_function(const std::string &name);

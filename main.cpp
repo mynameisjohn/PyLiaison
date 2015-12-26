@@ -83,6 +83,8 @@ public:
 // at bottom of file
 void ExposeFuncs();
 
+const static std::string ModName = "PyLiaison";
+
 int main() 
 {
 	// Call the above function
@@ -90,6 +92,8 @@ int main()
 
 	// All exposed functions should be exposed before this call
 	Python::initialize();
+
+	Python::RunCmd("from " + ModName + " import *");
 
 	// Call testArgs with 1 and 2
 	Python::RunCmd("print(testArgs(1,2))");
@@ -104,7 +108,9 @@ int main()
 
 	// Expose the Foo instance fOne
 	// into the main module
-	Python::Expose_Object(&fOne, "g_Foo");
+	Python::Module * modH = Python::GetModuleHandle(ModName);
+	Python::Object modObj = modH->AsObject();
+	modH->Expose_Object(&fOne, "g_Foo");
 
 	// Print some info
 	Python::RunCmd("print(g_Foo)");
@@ -120,24 +126,24 @@ int main()
 	// As long as we do this before a module that imports PyLiaison
 	// has been loaded, we have access to any variables predeclared
 	// into the module. So let's expose it into the PyLiaison module here
-	Python::Expose_Object(&fOne, "modFoo", Python::GetPyLiaisonModule().get());
+	modH->Expose_Object(&fOne, "modFoo", modObj.get());
 
 	// Now load up our custom module
 	// note that the relative path may be wrong
-	auto myMod = Python::Object::from_script("../expose.py");
+	auto scriptMod = Python::Object::from_script("../expose.py");
 
 	// Hello world
-	myMod.call_function("SayHello");
+	scriptMod.call_function("SayHello");
 
 	// Verify that the object we exposed into the PyLiaison module is there
-	myMod.call_function("TestModuleDecl");
+	scriptMod.call_function("TestModuleDecl");
 
-	// Alternatively, you can expose the Foo object into this module
-	Python::Expose_Object(&fOne, "c_Foo", myMod.get());
+	// Alternatively, you can expose the Foo object into this script
+	modH->Expose_Object(&fOne, "c_Foo", scriptMod.get());
 
 	// Verify that it was exposed
 	bool success(false);
-	myMod.call_function("checkFoo").convert(success);
+	scriptMod.call_function("checkFoo").convert(success);
 	if (success)
 		std::cout << "Foo object successfully exposed!" << std::endl;
 	else
@@ -145,55 +151,57 @@ int main()
 
 	// Set the vec3 object in the module
 	float x(1), y(0), z(0);
-	myMod.call_function("SetVec", x, y, z);
+	scriptMod.call_function("SetVec", x, y, z);
 
 	// Retrieve it from the module and see what we got
 	Vector3 pyVec;
-	myMod.get_attr("g_Vec3").convert(pyVec);
+	scriptMod.get_attr("g_Vec3").convert(pyVec);
 	std::cout << pyVec[0] << " better be " << x << std::endl;
 
 	// You can construct Foo objects within the module
 	// without having to expose them
 	Foo fTwo;
-	myMod.call_function("FooTest", &fTwo);
+	scriptMod.call_function("FooTest", &fTwo);
 
 	return EXIT_SUCCESS;
 }
 
 // Expose all Python Functions
 void ExposeFuncs() {
+	Python::Module * mod = Python::AddModule<struct MyMod>(ModName);
+
 	// add testArgs(x, y): to the PyLiaison module
 //	Py_Add_Func("testArgs", testArgs, "test adding two args");
-	Python::Register_Function<struct testArgsT>("testArgs", 
+	mod->Register_Function<struct testArgsT>("testArgs", 
 		Python::make_function(testArgs), "test passing args");
 
 	// add testOverload(v): to the PyLiaison module
     //Py_Add_Func("testOverload", Python::make_function(testArgs), "where do I have to implement it?");
-	Python::Register_Function<struct testOverloadT>("testOverload", 
+	mod->Register_Function<struct testOverloadT>("testOverload", 
 		Python::make_function(testOverload), "test overloading a PyObject * conversion");
  
-	Python::Register_Function<struct testPyTupT>("testPyTup", 
+	mod->Register_Function<struct testPyTupT>("testPyTup", 
 		Python::make_function(testPyTup), "test passing something the host converts");
 
 	// Register the Foo class
-	Python::Register_Class<Foo>("Foo");
+	mod->Register_Class<Foo>("Foo");
 
 	// Register member functions of Foo
 	std::function<Vector3(Foo *)> Foo_getVec(&Foo::getVec);
-	Python::Register_Mem_Function<Foo, struct Foo_getVecT>("getVec", Foo_getVec,
+	mod->Register_Mem_Function<Foo, struct Foo_getVecT>("getVec", Foo_getVec,
 		"Get the m_Vec3 member of a Foo instance");
 	std::function<void(Foo *, Vector3)> Foo_setVec(&Foo::setVec);
-	Python::Register_Mem_Function<Foo, struct Foo_setVecT>("setVec", Foo_setVec,
+	mod->Register_Mem_Function<Foo, struct Foo_setVecT>("setVec", Foo_setVec,
 		"Set the m_Vec3 member of a Foo instance with a list");
 	std::function<void(Foo *)> Foo_nrmVec(&Foo::normalizeVec);
-	Python::Register_Mem_Function<Foo, struct Foo_nrmVecT>("normalizeVec", Foo_nrmVec,
+	mod->Register_Mem_Function<Foo, struct Foo_nrmVecT>("normalizeVec", Foo_nrmVec,
 		"normalize the m_Vec3 member of a Foo instance");
 
 	// Expose one function of Vector3, just to prove it's possible
-	Python::Register_Class<Vector3>("Vector3");
+	mod->Register_Class<Vector3>("Vector3");
 
 	std::function<float(Vector3 *)> Vec3_len(&Vector3::len); // len is a keyword
-	Python::Register_Mem_Function<Vector3, struct Vec3_lenT_>("length()", Vec3_len,
+	mod->Register_Mem_Function<Vector3, struct Vec3_lenT_>("length()", Vec3_len,
 		"get the length, or magnitude, of the vector");
 }
 

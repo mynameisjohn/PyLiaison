@@ -46,5 +46,5 @@ namespace Python
 	// Get the PyLiaison Module object
 	// TODO Make an arbitrary number of modules
 	// and have them gettable by clients
-	Object GetPyLiaisonModule();
+	//Object GetPyLiaisonModule();
 }
