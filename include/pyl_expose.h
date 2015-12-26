@@ -7,7 +7,7 @@
 #include <Python.h>
 
 #include "pyl_misc.h"
-#include "pyl_classes.h"
+#include "pyl_funcs.h"
 
 // I don't know how to declare all these without
 // explicity specializing the templates... Unforunate
@@ -29,23 +29,6 @@ namespace Python
 		std::string m_strModDocs;
 		std::string m_strModName;
 		std::function<PyObject *()> m_fnModInit;
-
-
-		//};
-
-		//// The idea is to make a module where all your functions live
-		//const std::string ModuleName = "PyLiaison";
-
-		//// Externs
-		//extern std::map<std::type_index, ExposedClass> ExposedClasses;
-		//extern std::string ClassesDef; // Do I still need this?
-		//extern std::list<PyFunc> ExposedFunctions;
-		//extern MethodDefinitions MethodDef;
-		//extern PyObject * Py_ErrorObj;
-
-		//// These don't really need encapsulation
-		//extern PyModuleDef ModDef;
-		//extern std::string ModDocs;
 
 		// Add a new method def fo the Method Definitions of the module
 		template <typename tag>
