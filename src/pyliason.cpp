@@ -558,4 +558,14 @@ namespace Python {
 			return mod;
 		};
 	}
+
+	PyFunc GetPyFunc_Case4(std::function<void()> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+		{
+			fn();
+			Py_INCREF(Py_None);
+			return Py_None;
+		};
+		return pFn;
+	}
 }

@@ -19,6 +19,121 @@
 
 namespace Python
 {
+	// Pretty ridiculous
+	template <typename C>
+	static C * _getCapsulePtr(PyObject * obj)
+	{
+		assert(obj);
+		auto gpcPtr = static_cast<GenericPyClass *>((voidptr_t)obj);
+		assert(gpcPtr);
+		PyObject * capsule = gpcPtr->capsule;
+		assert(PyCapsule_CheckExact(capsule));
+		return static_cast<C *>(PyCapsule_GetPointer(capsule, NULL));
+	}
+
+
+	template <typename R, typename ... Args>
+	PyFunc GetPyFunc_Case1(std::function<R(Args...)> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+		{
+			std::tuple<Args...> tup;
+			convert(a, tup);
+			R rVal = invoke(fn, tup);
+
+			return alloc_pyobject(rVal);
+		};
+		return pFn;
+	}
+
+	template <typename ... Args>
+	PyFunc GetPyFunc_Case2(std::function<void(Args...)> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+		{
+			std::tuple<Args...> tup;
+			convert(a, tup);
+			invoke(fn, tup);
+
+			Py_INCREF(Py_None);
+			return Py_None;
+		};
+		return pFn;
+	}
+
+	template <typename R>
+	PyFunc GetPyFunc_Case3(std::function<R()> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+		{
+			R rVal = fn();
+			return alloc_pyobject(rVal);
+		};
+		return pFn;
+	}
+
+	PyFunc GetPyFunc_Case4(std::function<void()> fn);
+
+
+	template <typename C, typename R, typename ... Args>
+	PyFunc GetPyFunc_Mem_Case1(std::function<R(Args...)> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// the first arg is the instance pointer, contained in s
+			std::tuple<Args...> tup;
+			std::get<0>(tup) = _getCapsulePtr<C>(s);
+
+			// recurse till the first element, getting args from a
+			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
+
+			// Invoke function, get retVal	
+			R rVal = invoke(fn, tup);
+
+			// convert rVal to PyObject, return
+			return alloc_pyobject(rVal);
+		};
+		return pFn;
+	}
+
+	template <typename C, typename ... Args>
+	PyFunc GetPyFunc_Mem_Case2(std::function<void(Args...)> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// the first arg is the instance pointer, contained in s
+			std::tuple<Args...> tup;
+			std::get<0>(tup) = _getCapsulePtr<C>(s);
+
+			// recurse till the first element, getting args from a
+			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
+
+			// invoke function
+			invoke(fn, tup);
+
+			// Return None
+			Py_INCREF(Py_None);
+			return Py_None;
+		};
+		return pFn;
+	}
+
+	template <typename C, typename R>
+	PyFunc GetPyFunc_Mem_Case3(std::function<R(C *)> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// Nothing special here
+			R rVal = fn(_getCapsulePtr<C>(s));
+
+			return alloc_pyobject(rVal);
+		};
+		return pFn;
+	}
+	
+	template<typename C>
+	PyFunc GetPyFunc_Mem_Case4(std::function<void(C *)> fn) {
+		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+			// Nothing special here
+			fn(_getCapsulePtr<C>(s));
+
+			Py_INCREF(Py_None);
+			return Py_None;
+		};
+		return pFn;
+	}
+
 	class Module {// : public Object {
 	private:
 		std::map<std::type_index, ExposedClass> m_mapExposedClasses;
@@ -97,14 +212,7 @@ namespace Python
 		template <typename tag, typename R, typename ... Args>
 		void Register_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a)
-			{
-				std::tuple<Args...> tup;
-				convert(a, tup);
-				R rVal = invoke(fn, tup);
-
-				return alloc_pyobject(rVal);
-			};
+			PyFunc pFn = GetPyFunc_Case1(fn);
 
 			_add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
 		}
@@ -113,15 +221,7 @@ namespace Python
 		template <typename tag, typename ... Args>
 		void Register_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a)
-			{
-				std::tuple<Args...> tup;
-				convert(a, tup);
-				invoke(fn, tup);
-
-				Py_INCREF(Py_None);
-				return Py_None;
-			};
+			PyFunc pFn = GetPyFunc_Case2(fn);
 
 			_add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
 		}
@@ -130,11 +230,7 @@ namespace Python
 		template <typename tag, typename R>
 		void Register_Function(std::string methodName, std::function<R()> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a)
-			{
-				R rVal = fn();
-				return alloc_pyobject(rVal);
-			};
+			PyFunc pFn = GetPyFunc_Case3();
 
 			_add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
@@ -143,47 +239,19 @@ namespace Python
 		template <typename tag>
 		void Register_Function(std::string methodName, std::function<void()> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a)
-			{
-				fn();
-				Py_INCREF(Py_None);
-				return Py_None;
-			};
+			PyFunc pFn = GetPyFunc_Case4();
 
 			_add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
 
-		// Pretty ridiculous
-		template <typename C>
-		static C * _getCapsulePtr(PyObject * obj)
-		{
-			assert(obj);
-			auto gpcPtr = static_cast<GenericPyClass *>((voidptr_t)obj);
-			assert(gpcPtr);
-			PyObject * capsule = gpcPtr->capsule;
-			assert(PyCapsule_CheckExact(capsule));
-			return static_cast<C *>(PyCapsule_GetPointer(capsule, NULL));
-		}
+
 
 		// Case 1
 		template <typename C, typename tag, typename R, typename ... Args,
 			typename std::enable_if<sizeof...(Args) != 1, int>::type = 0>
 			void Register_Mem_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-				// the first arg is the instance pointer, contained in s
-				std::tuple<Args...> tup;
-				std::get<0>(tup) = _getCapsulePtr<C>(s);
-
-				// recurse till the first element, getting args from a
-				add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
-
-				// Invoke function, get retVal	
-				R rVal = invoke(fn, tup);
-
-				// convert rVal to PyObject, return
-				return alloc_pyobject(rVal);
-			};
+			PyFunc pFn = GetPyFunc_Mem_Case1<C>(fn);
 			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
 		}
 
@@ -191,21 +259,7 @@ namespace Python
 		template <typename C, typename tag, typename ... Args>
 		void Register_Mem_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-				// the first arg is the instance pointer, contained in s
-				std::tuple<Args...> tup;
-				std::get<0>(tup) = _getCapsulePtr<C>(s);
-
-				// recurse till the first element, getting args from a
-				add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
-
-				// invoke function
-				invoke(fn, tup);
-
-				// Return None
-				Py_INCREF(Py_None);
-				return Py_None;
-			};
+			PyFunc pFn = GetPyFunc_Mem_Case2<C>(fn);
 			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
 		}
 
@@ -213,12 +267,7 @@ namespace Python
 		template <typename C, typename tag, typename R>
 		void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-				// Nothing special here
-				R rVal = fn(_getCapsulePtr<C>(s));
-
-				return alloc_pyobject(rVal);
-			};
+			PyFunc pFn = GetPyFunc_Mem_Case3<C>(fn);
 			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
 		}
 
@@ -226,13 +275,7 @@ namespace Python
 		template <typename C, typename tag>
 		void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, std::string docs = "")
 		{
-			PyFunc pFn = [fn](PyObject * s, PyObject * a) {
-				// Nothing special here
-				fn(_getCapsulePtr<C>(s));
-
-				Py_INCREF(Py_None);
-				return Py_None;
-			};
+			PyFunc pFn = GetPyFunc_Mem_Case4<C>(fn);
 			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
 		}
 
