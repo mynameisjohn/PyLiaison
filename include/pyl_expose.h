@@ -32,7 +32,7 @@ namespace Python
 
 		// Add a new method def fo the Method Definitions of the module
 		template <typename tag>
-		void _add_Method_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs)
+		void add_Method_Def(PyFunc pFn, std::string methodName, int methodFlags, std::string docs)
 		{
 			// We need to store these where they won't move
 			m_liExposedFunctions.push_back(pFn);
@@ -46,7 +46,7 @@ namespace Python
 
 		// This isn't really being used at the moment, since the intention is unclear
 		template<class C>
-		void _add_Member(std::string name, size_t offset, int flags, std::string docs) {
+		void add_Member(std::string name, size_t offset, int flags, std::string docs) {
 			const int type = T_INT; // What do I do for other types? Make a map?
 			auto it = m_mapExposedClasses.find(typeid(C));
 			if (it == m_mapExposedClasses.end())
@@ -56,7 +56,7 @@ namespace Python
 		}
 
 		template <typename tag, class C>
-		void _add_Mem_Fn_Def(std::string methodName, PyFunc pFn, int methodFlags, std::string docs)
+		void add_Mem_Fn_Def(std::string methodName, PyFunc pFn, int methodFlags, std::string docs)
 		{
 			auto it = m_mapExposedClasses.find(typeid(C));
 			if (it == m_mapExposedClasses.end())
@@ -72,6 +72,12 @@ namespace Python
 			it->second.AddMemberFn(methodName, fnPtr, methodFlags, docs);
 		}
 
+		// Creates init function where it won't get invalidated
+		void createFnObject();
+
+		// Implementation of expose object function
+		int exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod);
+
 	public:
 		Module();
 		Module(std::string modName, std::string modDocs);
@@ -83,7 +89,7 @@ namespace Python
 		{
 			PyFunc pFn = GetPyFunc_Case1(fn);
 
-			_add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
+			add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
 		}
 
 		// Case 2: like above, but void return : void fn( Args... ) { ... return; }
@@ -92,7 +98,7 @@ namespace Python
 		{
 			PyFunc pFn = GetPyFunc_Case2(fn);
 
-			_add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
+			add_Method_Def<tag>(pFn, methodName, METH_VARARGS, docs);
 		}
 
 		// Case 3: returns R, no args : R fn() { ... return R(); }
@@ -101,7 +107,7 @@ namespace Python
 		{
 			PyFunc pFn = GetPyFunc_Case3();
 
-			_add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
+			add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
 
 		// Case 4: returns void, no args : void fn() { ... hello world; }
@@ -110,10 +116,8 @@ namespace Python
 		{
 			PyFunc pFn = GetPyFunc_Case4();
 
-			_add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
+			add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
-
-
 
 		// Case 1
 		template <typename C, typename tag, typename R, typename ... Args,
@@ -121,7 +125,7 @@ namespace Python
 			void Register_Mem_Function(std::string methodName, std::function<R(Args...)> fn, std::string docs = "")
 		{
 			PyFunc pFn = GetPyFunc_Mem_Case1<C>(fn);
-			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
+			add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
 		}
 
 		// Case 2
@@ -129,7 +133,7 @@ namespace Python
 		void Register_Mem_Function(std::string methodName, std::function<void(Args...)> fn, std::string docs = "")
 		{
 			PyFunc pFn = GetPyFunc_Mem_Case2<C>(fn);
-			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
+			add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_VARARGS, docs);
 		}
 
 		// Case 3
@@ -137,7 +141,7 @@ namespace Python
 		void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 		{
 			PyFunc pFn = GetPyFunc_Mem_Case3<C>(fn);
-			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
+			add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
 		}
 
 		// Case 4
@@ -145,7 +149,7 @@ namespace Python
 		void Register_Mem_Function(std::string methodName, std::function<void(C *)> fn, std::string docs = "")
 		{
 			PyFunc pFn = GetPyFunc_Mem_Case4<C>(fn);
-			_add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
+			add_Mem_Fn_Def<tag, C>(methodName, pFn, METH_NOARGS, docs);
 		}
 
 		// This function generates a python class definition
@@ -156,8 +160,6 @@ namespace Python
 				return;
 			m_mapExposedClasses.emplace(typeid(C), className);
 		}
-
-		int _ExposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod);
 
 		// This will expose a specific C++ object instance as a Python
 		// object, giving it a pointer to the original object (which better stay live)
@@ -174,11 +176,9 @@ namespace Python
 				return;
 
 			// If a module wasn't specified, just do main
-			if (!mod) {
-				// If there isn't a specific module,
-				// then we can either add it to __main__
-				// or to the PyLiaison module
-				mod = PyImport_ImportModule("__main__");
+			mod = mod ? mod : PyImport_ImportModule("__main__");
+			if (mod == nullptr) {
+				// ...
 			}
 
 			// Make a void pointer out of it
@@ -187,25 +187,20 @@ namespace Python
 			int success = _ExposeObjectImpl(obj, it->second, name, mod);
 		}
 
-		// make private
-		void createFnObject();
-
 		// Does this reference invalidate if reassigned?
 		template <typename tag>
-		PyObject *(*getFnPtr())() {
+		PyObject *(*__getFnPtr())() {
 			createFnObject();
 			return get_fn_ptr<tag>(m_fnModInit);
 		}
 
 		// Useful gets
-		const char * GetNameBuf() const;
-		std::string GetNameStr() const;
+		const char * __getNameBuf() const;
+		std::string __getNameStr() const;
 		Object AsObject() const;
 
 		// Lock down references
-		void Init();
-
-		
+		void __init();
 	};
 
 	// Module Storage, non reference invalidating
@@ -223,7 +218,7 @@ namespace Python
 		Module& mod = __g_MapPyModules[modName] = Module(modName, modDocs);
 
 		// Make sure the init function gets called when imported (is fn ptr safe?)
-		int success = PyImport_AppendInittab(mod.GetNameBuf(), mod.getFnPtr<tag>());
+		int success = PyImport_AppendInittab(mod.GetNameBuf(), mod.__getFnPtr<tag>());
 		return &mod;
 	}
 

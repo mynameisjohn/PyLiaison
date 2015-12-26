@@ -120,7 +120,7 @@ namespace Python {
 		Py_Finalize();
 
 		for (auto& mod : __g_MapPyModules)
-			mod.second.Init();
+			mod.second.__init();
 
 		// Call the _Mod_Init function when my module is imported
 		// PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
@@ -445,7 +445,7 @@ namespace Python {
 	//	return Object(plMod);
 	//}
 
-	std::string Module::GetNameStr() const {
+	std::string Module::__getNameStr() const {
 		return m_strModName;
 	}
 
@@ -453,7 +453,7 @@ namespace Python {
 		auto it = __g_MapPyModules.find(modName);
 		if (it == __g_MapPyModules.end())
 			return nullptr;
-		PyObject * plMod = PyImport_ImportModule(it->second.GetNameBuf());
+		PyObject * plMod = PyImport_ImportModule(it->second.__getNameBuf());
 		return plMod;
 	}
 
@@ -468,7 +468,7 @@ namespace Python {
 		return GetModuleObj(m_strModName);
 	}
 
-	int Module::_ExposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
+	int Module::exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
 		// Allocate a new object instance given the PyTypeObject
 		PyObject* newPyObject = _PyObject_New(&expCls.m_TypeObject);
 
@@ -506,11 +506,11 @@ namespace Python {
 		m_strModDocs = modDocs;
 	}
 
-	const char * Module::GetNameBuf() const {
+	const char * Module::__getNameBuf() const {
 		return m_strModName.c_str();
 	}
 
-	void Module::Init() {
+	void Module::__init() {
 		// Lock down any definitions
 		for (auto& e_Class : m_mapExposedClasses)
 			e_Class.second.Prepare();
@@ -559,7 +559,7 @@ namespace Python {
 		};
 	}
 
-	PyFunc GetPyFunc_Case4(std::function<void()> fn) {
+	PyFunc __getPyFunc_Case4etPyFunc_Case4(std::function<void()> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			fn();

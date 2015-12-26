@@ -8,7 +8,7 @@ namespace Python
 {
 	// Pretty ridiculous
 	template <typename C>
-	static C * _getCapsulePtr(PyObject * obj)
+	static C * __getCapsulePtr(PyObject * obj)
 	{
 		assert(obj);
 		auto gpcPtr = static_cast<GenericPyClass *>((voidptr_t)obj);
@@ -20,7 +20,7 @@ namespace Python
 
 
 	template <typename R, typename ... Args>
-	PyFunc GetPyFunc_Case1(std::function<R(Args...)> fn) {
+	PyFunc __getPyFunc_Case1(std::function<R(Args...)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			std::tuple<Args...> tup;
@@ -33,7 +33,7 @@ namespace Python
 	}
 
 	template <typename ... Args>
-	PyFunc GetPyFunc_Case2(std::function<void(Args...)> fn) {
+	PyFunc __getPyFunc_Case2(std::function<void(Args...)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			std::tuple<Args...> tup;
@@ -47,7 +47,7 @@ namespace Python
 	}
 
 	template <typename R>
-	PyFunc GetPyFunc_Case3(std::function<R()> fn) {
+	PyFunc __getPyFunc_Case3(std::function<R()> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			R rVal = fn();
@@ -56,11 +56,11 @@ namespace Python
 		return pFn;
 	}
 
-	PyFunc GetPyFunc_Case4(std::function<void()> fn);
+	PyFunc __getPyFunc_Case4(std::function<void()> fn);
 
 
 	template <typename C, typename R, typename ... Args>
-	PyFunc GetPyFunc_Mem_Case1(std::function<R(Args...)> fn) {
+	PyFunc __getPyFunc_Mem_Case1(std::function<R(Args...)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
@@ -79,7 +79,7 @@ namespace Python
 	}
 
 	template <typename C, typename ... Args>
-	PyFunc GetPyFunc_Mem_Case2(std::function<void(Args...)> fn) {
+	PyFunc __getPyFunc_Mem_Case2(std::function<void(Args...)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
@@ -99,7 +99,7 @@ namespace Python
 	}
 
 	template <typename C, typename R>
-	PyFunc GetPyFunc_Mem_Case3(std::function<R(C *)> fn) {
+	PyFunc __getPyFunc_Mem_Case3(std::function<R(C *)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// Nothing special here
 			R rVal = fn(_getCapsulePtr<C>(s));
@@ -110,7 +110,7 @@ namespace Python
 	}
 
 	template<typename C>
-	PyFunc GetPyFunc_Mem_Case4(std::function<void(C *)> fn) {
+	PyFunc __getPyFunc_Mem_Case4(std::function<void(C *)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// Nothing special here
 			fn(_getCapsulePtr<C>(s));
