@@ -1,13 +1,13 @@
 ﻿# a test script for PyLiaison
 
 # PyLiaison is importable anywhere
-from PyLiaison import *
+import PyLiaison as pyl
 
 # A simple function that invokes
 # another function from PyLiaison
 def SayHello():
 	print('Hello, friend')
-	print(testArgs(1,3))
+	print(pyl.testArgs(1,3))
 
 # This will be exposed
 # Note that you don't
@@ -39,7 +39,7 @@ def SetVec(x, y, z):
 # You can also construct
 # C++ objects on the fly
 def FooTest(fPtr):
-	f = Foo(fPtr)
+	f = pyl.Foo(fPtr)
 	f.setVec(g_Vec3)
 	print('We got a foo object at ' + str(f()))
 	print('Its vector is ' + str(f.getVec()))
@@ -48,4 +48,4 @@ def FooTest(fPtr):
 # the pyliaison module, as in
 # PyLiaison.modFoo
 def TestModuleDecl():
-	print(str(modFoo) + ' lives in the PyLiaison module!')
+	print(str(pyl.modFoo) + ' lives in the PyLiaison module!')

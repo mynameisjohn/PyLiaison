@@ -468,7 +468,7 @@ namespace Python {
 		return GetModuleObj(m_strModName);
 	}
 
-	int Module::exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
+	int Module::__exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
 		// Allocate a new object instance given the PyTypeObject
 		PyObject* newPyObject = _PyObject_New(&expCls.m_TypeObject);
 

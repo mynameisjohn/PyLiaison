@@ -64,7 +64,7 @@ namespace Python
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
-			std::get<0>(tup) = _getCapsulePtr<C>(s);
+			std::get<0>(tup) = __getCapsulePtr<C>(s);
 
 			// recurse till the first element, getting args from a
 			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
@@ -83,7 +83,7 @@ namespace Python
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
-			std::get<0>(tup) = _getCapsulePtr<C>(s);
+			std::get<0>(tup) = __getCapsulePtr<C>(s);
 
 			// recurse till the first element, getting args from a
 			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
@@ -102,7 +102,7 @@ namespace Python
 	PyFunc __getPyFunc_Mem_Case3(std::function<R(C *)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// Nothing special here
-			R rVal = fn(_getCapsulePtr<C>(s));
+			R rVal = fn(__getCapsulePtr<C>(s));
 
 			return alloc_pyobject(rVal);
 		};
@@ -113,7 +113,7 @@ namespace Python
 	PyFunc __getPyFunc_Mem_Case4(std::function<void(C *)> fn) {
 		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// Nothing special here
-			fn(_getCapsulePtr<C>(s));
+			fn(__getCapsulePtr<C>(s));
 
 			Py_INCREF(Py_None);
 			return Py_None;
