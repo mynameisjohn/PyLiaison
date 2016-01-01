@@ -105,7 +105,7 @@ namespace Python
 		template <typename tag, typename R>
 		void Register_Function(std::string methodName, std::function<R()> fn, std::string docs = "")
 		{
-			PyFunc pFn = __getPyFunc_Case3();
+			PyFunc pFn = __getPyFunc_Case3(fn);
 
 			add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
@@ -114,7 +114,7 @@ namespace Python
 		template <typename tag>
 		void Register_Function(std::string methodName, std::function<void()> fn, std::string docs = "")
 		{
-			PyFunc pFn = __getPyFunc_Case4();
+			PyFunc pFn = __getPyFunc_Case4(fn);
 
 			add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
