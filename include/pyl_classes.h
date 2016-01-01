@@ -6,7 +6,7 @@
 #include <Python.h>
 #include <structmember.h>
 
-#include "pyl_Convert.h"
+#include "pyl_convert.h"
 
 namespace Python
 {
