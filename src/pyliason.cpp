@@ -29,7 +29,7 @@ namespace Python {
 	using std::runtime_error;
 	using std::string;
 
-	std::map<std::string, Module> __g_MapPyModules;
+	std::map<std::string, ModuleDef> __g_MapPyModules;
 	std::mutex CmdMutex;
 
 	Object::Object() {
@@ -445,7 +445,7 @@ namespace Python {
 	//	return Object(plMod);
 	//}
 
-	std::string Module::__getNameStr() const {
+	std::string ModuleDef::__getNameStr() const {
 		return m_strModName;
 	}
 
@@ -457,18 +457,18 @@ namespace Python {
 		return plMod;
 	}
 
-	Module * GetModuleHandle(std::string modName) {
+	ModuleDef * GetModuleHandle(std::string modName) {
 		auto it = __g_MapPyModules.find(modName);
 		if (it == __g_MapPyModules.end())
 			return nullptr;
 		return &it->second;
 	}
 
-	Object Module::AsObject() const{
+	Object ModuleDef::AsObject() const{
 		return GetModuleObj(m_strModName);
 	}
 
-	int Module::__exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
+	int ModuleDef::__exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
 		// Allocate a new object instance given the PyTypeObject
 		PyObject* newPyObject = _PyObject_New(&expCls.m_TypeObject);
 
@@ -496,27 +496,27 @@ namespace Python {
 		return 0;
 	}
 
-	Module::Module() {
+	ModuleDef::ModuleDef() {
 	}
 
-	Module::Module(std::string modName, std::string modDocs) :
-		Module()
+	ModuleDef::ModuleDef(std::string modName, std::string modDocs) :
+		ModuleDef()
 	{
 		m_strModName = modName;
 		m_strModDocs = modDocs;
 	}
 
-	const char * Module::__getNameBuf() const {
+	const char * ModuleDef::__getNameBuf() const {
 		return m_strModName.c_str();
 	}
 
-	void Module::__init() {
+	void ModuleDef::__init() {
 		// Lock down any definitions
 		for (auto& e_Class : m_mapExposedClasses)
 			e_Class.second.Prepare();
 	}
 
-	void Module::createFnObject() {
+	void ModuleDef::createFnObject() {
 		// Moving this here, seems safer
 		const char * nameBuf = m_strModName.c_str();
 		const char * docBuf = m_strModDocs.c_str();

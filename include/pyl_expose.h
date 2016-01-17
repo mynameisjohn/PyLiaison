@@ -20,7 +20,7 @@
 namespace Python
 {
 
-	class Module {// : public Object {
+	class ModuleDef {// : public Object {
 	private:
 		std::map<std::type_index, ExposedClass> m_mapExposedClasses;
 		std::list<PyFunc> m_liExposedFunctions;
@@ -79,8 +79,8 @@ namespace Python
 		int __exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod);
 
 	public:
-		Module();
-		Module(std::string modName, std::string modDocs);
+		ModuleDef();
+		ModuleDef(std::string modName, std::string modDocs);
 
 
 		// Case 1: a straight up function that would look like : R fn( Args... ) { ... return R(); }
@@ -105,7 +105,7 @@ namespace Python
 		template <typename tag, typename R>
 		void Register_Function(std::string methodName, std::function<R()> fn, std::string docs = "")
 		{
-			PyFunc pFn = __getPyFunc_Case3();
+			PyFunc pFn = __getPyFunc_Case3(fn);
 
 			add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
@@ -114,7 +114,7 @@ namespace Python
 		template <typename tag>
 		void Register_Function(std::string methodName, std::function<void()> fn, std::string docs = "")
 		{
-			PyFunc pFn = __getPyFunc_Case4();
+			PyFunc pFn = __getPyFunc_Case4(fn);
 
 			add_Method_Def<tag>(pFn, methodName, METH_NOARGS, docs);
 		}
@@ -137,7 +137,7 @@ namespace Python
 		}
 
 		// Case 3
-		template <typename C, typename tag, typename R>
+		template <typename C, typename tag, typename R, typename Callable>
 		void Register_Mem_Function(std::string methodName, std::function<R(C *)> fn, std::string docs = "")
 		{
 			PyFunc pFn = __getPyFunc_Mem_Case3<C>(fn);
@@ -204,18 +204,18 @@ namespace Python
 	};
 
 	// Module Storage, non reference invalidating
-	extern std::map<std::string, Module> __g_MapPyModules;
+	extern std::map<std::string, ModuleDef> __g_MapPyModules;
 
 	// Add module to above, return pointer to new module
 	template <typename tag>
-	Module * AddModule(std::string modName, std::string modDocs = "No docs defined") {
+	ModuleDef * AddModule(std::string modName, std::string modDocs = "No docs defined") {
 		// If we've already added this, return a pointer to it
 		auto it = __g_MapPyModules.find(modName);
 		if (it != __g_MapPyModules.end())
 			return &it->second;
 
 		// Add to map
-		Module& mod = __g_MapPyModules[modName] = Module(modName, modDocs);
+		ModuleDef& mod = __g_MapPyModules[modName] = ModuleDef(modName, modDocs);
 
 		// Make sure the init function gets called when imported (is fn ptr safe?)
 		int success = PyImport_AppendInittab(mod.__getNameBuf(), mod.__getFnPtr<tag>());
@@ -229,5 +229,5 @@ namespace Python
 
 	// Just get a pointer to the stored module
 	// use this for adding functions and members
-	Module * GetModuleHandle(std::string modName);
+	ModuleDef * GetModuleHandle(std::string modName);
 }

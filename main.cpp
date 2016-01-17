@@ -87,13 +87,20 @@ const static std::string ModName = "PyLiaison";
 
 int main() 
 {
-	// Call the above function
+	// Expose functions and class functions
 	ExposeFuncs();
+
+	Python::ModuleDef * constantsModule = Python::AddModule<struct constantModule>("Constants", "Store constants here");
 
 	// All exposed functions should be exposed before this call
 	Python::initialize();
 
+	int MAGIC = 42;
+	constantsModule->AsObject().set_attr("MAGIC", MAGIC);
+
 	Python::RunCmd("from " + ModName + " import *");
+	Python::RunCmd("import Constants");
+	Python::RunCmd("print(Constants.MAGIC)");
 
 	// Call testArgs with 1 and 2
 	Python::RunCmd("print(testArgs(1,2))");
@@ -108,7 +115,7 @@ int main()
 
 	// Expose the Foo instance fOne
 	// into the main module
-	Python::Module * modH = Python::GetModuleHandle(ModName);
+	Python::ModuleDef * modH = Python::GetModuleHandle(ModName);
 	Python::Object modObj = modH->AsObject();
 	modH->Expose_Object(&fOne, "g_Foo");
 
@@ -168,7 +175,7 @@ int main()
 
 // Expose all Python Functions
 void ExposeFuncs() {
-	Python::Module * mod = Python::AddModule<struct MyMod>(ModName);
+	Python::ModuleDef * mod = Python::AddModule<struct MyMod>(ModName);
 
 	// add testArgs(x, y): to the PyLiaison module
 //	Py_Add_Func("testArgs", testArgs, "test adding two args");
