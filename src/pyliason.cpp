@@ -118,27 +118,10 @@ namespace pyl
 		// Finalize any previous stuff
 		Py_Finalize();
 
-		//for (auto& mod : __g_MapPyModules)
-		//	mod.second.__init();
-
 		ModuleDef::InitAllModules();
-
-		// Call the _Mod_Init function when my module is imported
-		// PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
 
 		// Startup python
 		Py_Initialize();
-
-		//// Lock down any definitions
-		//for (auto& e_Class : ExposedClasses)
-		//	e_Class.second.Prepare();
-
-		//// Import our module (this makes it a bit easier)
-		//std::string importString = "from " + ModuleName + " import *";
-
-		//// It seems like this is a bad time to lock a mutex
-		//// so just run it the old fashioned way
-		//PyRun_SimpleString(importString.c_str());
 	}
 
 	void finalize() {
@@ -156,8 +139,6 @@ namespace pyl
 	void print_object(PyObject *obj) {
 		PyObject_Print(obj, stdout, 0);
 	}
-
-
 
 	// Allocation methods
 
@@ -221,9 +202,6 @@ namespace pyl
 		return true;
 	}
 
-	/*bool convert(PyObject *obj, Py_ssize_t &val) {
-	return generic_convert<Py_ssize_t>(obj, is_py_int, PyInt_AsSsize_t, val);
-	}*/
 	bool convert(PyObject *obj, bool &value) {
 		if (obj == Py_False)
 			value = false;
@@ -257,20 +235,9 @@ namespace pyl
 		return false;
 	}
 
-	//std::map<std::type_index, ExposedClass> ExposedClasses;
-	//std::string ClassesDef; // Do I still need this?
-	//std::list<PyFunc> ExposedFunctions;
-	//MethodDefinitions MethodDef;
-	//std::mutex CmdMutex;
-	//PyObject * Py_ErrorObj;
-
 	// These are the black sheep for now
 	PyModuleDef ModDef;
 	std::string ModDocs;
-
-	// TODO 
-	// Have the generic PyTypeObject as a global
-	// and inherit from it
 
 	// We only need one instance of the above, shared by exposed objects
 	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
@@ -386,40 +353,6 @@ namespace pyl
 		_insert(member);
 	}
 
-	//PyMODINIT_FUNC _Mod_Init()
-	//{
-	//	// Is it fair to assume the method def is ready?
-	//	// The MethodDef contains all functions defined in C++ code,
-	//	// including those called into by exposed classes
-
-	//	ModDef = PyModuleDef
-	//	{
-	//		PyModuleDef_HEAD_INIT,
-	//		ModuleName.c_str(),
-	//		ModDocs.c_str(),
-	//		-1,
-	//		MethodDef.Ptr()
-	//	};
-
-	//	PyObject * mod = PyModule_Create(&ModDef);
-	//	//if (mod == nullptr) ...
-
-	//	std::string errName = ModuleName + ".error";
-	//	Py_ErrorObj = PyErr_NewException((char *)errName.c_str(), 0, 0);
-	//	Py_XINCREF(Py_ErrorObj);
-	//	PyModule_AddObject(mod, "error", Py_ErrorObj);
-
-	//	// Is now the time to declare all classes?
-	//	for (auto& exp_class : ExposedClasses) {
-	//		if (PyType_Ready(&(exp_class.second.m_TypeObject)) < 0)
-	//			assert(false);
-
-	//		PyModule_AddObject(mod, exp_class.second.PyClassName.c_str(), (PyObject *)&exp_class.second.m_TypeObject);
-	//	}
-
-	//	return mod;
-	//}
-
 	int RunFile(std::string file)
 	{
 		std::ifstream in(file);
@@ -434,163 +367,6 @@ namespace pyl
 		Py_DECREF(refCount);
 		return ret;
 	}
-
-	// Check out the docs for PyImport and see if there's anything cool
-	//Object GetPyLiaisonModule()
-	//{
-	//	PyObject * plMod = PyImport_ImportModule(ModuleName.c_str());
-
-	//	return Object(plMod);
-	//}
-
-	//std::string ModuleDef::__getNameStr() const {
-	//	return m_strModName;
-	//}
-
-	//Object GetModuleObj(std::string modName) {
-	//	auto it = __g_MapPyModules.find(modName);
-	//	if (it == __g_MapPyModules.end())
-	//		return nullptr;
-
-	//	PyObject * plMod = PyImport_ImportModule(it->second.__getNameBuf());
-	//	
-	//	return plMod;
-	//}
-
-	//ModuleDef * GetModuleHandle(std::string modName) {
-	//	auto it = __g_MapPyModules.find(modName);
-	//	if (it == __g_MapPyModules.end())
-	//		return nullptr;
-
-	//	return &it->second;
-	//}
-
-	//Object ModuleDef::AsObject() const{
-	//	return GetModuleObj(m_strModName);
-	//}
-
-	//int ModuleDef::exposeObject_impl( type_info T, voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
-	//	// If we haven't declared the class, we can't expose it
-	//	auto it = m_mapExposedClasses.find( T );
-	//	if ( it == m_mapExposedClasses.end() )
-	//		return -1;
-
-	//	// If a module wasn't specified, just do main
-	//	mod = mod ? mod : PyImport_ImportModule( "__main__" );
-	//	if ( mod == nullptr )
-	//	{
-	//		// ...
-	//	}
-
-	//	// Allocate a new object instance given the PyTypeObject
-	//	PyObject* newPyObject = _PyObject_New(&expCls.m_TypeObject);
-
-	//	// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
-	//	PyObject* capsule = PyCapsule_New(instance, NULL, NULL);
-
-	//	// Set the c_ptr member variable (which better exist) to the capsule
-	//	static_cast<GenericPyClass *>((voidptr_t)newPyObject)->capsule = capsule;
-
-	//	// Make a variable in the module out of the new py object
-	//	int success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
-	//	if (success != 0) {
-	//		std::string modName("module");
-	//		convert(PyObject_Str(mod), modName);
-	//		std::cout << "Error adding attr " << name << " to module " << modName << std::endl;
-	//	}
-	//	
-	//	// decref and return
-	//	Py_DECREF(mod);
-	//	Py_DECREF(newPyObject);
-
-	//	return success;
-	//}
-
-	//ModuleDef::ModuleDef() {
-	//}
-
-	//ModuleDef::ModuleDef(std::string modName, std::string modDocs) :
-	//	ModuleDef()
-	//{
-	//	m_strModName = modName;
-	//	m_strModDocs = modDocs;
-	//}
-
-	//const char * ModuleDef::__getNameBuf() const {
-	//	return m_strModName.c_str();
-	//}
-
-	//void ModuleDef::__init() {
-	//	// Lock down any definitions
-	//	for (auto& e_Class : m_mapExposedClasses)
-	//		e_Class.second.Prepare();
-	//}
-
-	//void ModuleDef::createFnObject() {
-	//	// Moving this here, seems safer
-	//	const char * nameBuf = m_strModName.c_str();
-	//	const char * docBuf = m_strModDocs.c_str();
-	//	MethodDefinitions * defPtr =& m_vMethodDef;
-	//	std::map<std::type_index, ExposedClass>* expClassMap = &m_mapExposedClasses;
-	//	m_fnModInit = [nameBuf, docBuf, defPtr, expClassMap]() {
-	//		// Is it fair to assume the method def is ready?
-	//		// The MethodDef contains all functions defined in C++ code,
-	//		// including those called into by exposed classes
-
-	//		ModDef = PyModuleDef
-	//		{
-	//			PyModuleDef_HEAD_INIT,
-	//			nameBuf,
-	//			docBuf,
-	//			-1,
-	//			defPtr->Ptr()
-	//		};
-
-	//		PyObject * mod = PyModule_Create(&ModDef);
-
-	//		// Is now the time to declare all classes?
-	//		for (auto& exp_class : *expClassMap) {
-	//			auto pTypeObj = (PyTypeObject *)&(exp_class.second.m_TypeObject);
-	//			if (PyType_Ready(pTypeObj) < 0)
-	//				assert(false);
-
-	//			const char * className = exp_class.second.PyClassName.c_str();
-	//			PyObject * typeObj = (PyObject *)&exp_class.second.m_TypeObject;
-	//			PyModule_AddObject(mod, className, typeObj);
-	//		}
-
-	//		return mod;
-	//	};
-	//}
-
-	//void ModuleDef::registerClass_impl( type_info T, std::string& className )
-	//{
-	//	auto it = m_mapExposedClasses.find( T );
-	//	if ( it != m_mapExposedClasses.end() )
-	//		return;
-
-	//	m_mapExposedClasses.emplace( T, className );
-	//}
-
-	//ModuleDef * __addModule_impl( std::string& modName, std::string& modDocs )
-	//{
-	//	// If we've already added this, return a pointer to it
-	//	auto it = __g_MapPyModules.find( modName );
-	//	if ( it != __g_MapPyModules.end() )
-	//		return &it->second;
-
-	//	ModuleDef * pMod = &__g_MapPyModules[modName] = ModuleDef::Create( modName, modDocs );
-	//}
-
-
-
-
-
-
-
-
-
-
 
 	// Static map declaration
 	std::map<std::string, ModuleDef> s_mapPyModules;
