@@ -8,7 +8,7 @@
 
 #include "pyl_convert.h"
 
-namespace Python
+namespace pyl
 {
 	// Every python module function looks like this
 	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
@@ -152,7 +152,7 @@ namespace Python
 		* \param name The name of the attribute to be called.
 		* \param args The arguments which will be used when calling the
 		* attribute.
-		* \return Python::Object containing the result of the function.
+		* \return pyl::Object containing the result of the function.
 		*/
 		template<typename... Args>
 		Object call_function(const std::string &name, const Args&... args) {
@@ -173,9 +173,9 @@ namespace Python
 		* This function might throw a std::runtime_error if there is
 		* an error when calling the function.
 		*
-		* \sa Python::Object::call_function.
+		* \sa pyl::Object::call_function.
 		* \param name The name of the callable attribute to be executed.
-		* \return Python::Object containing the result of the function.
+		* \return pyl::Object containing the result of the function.
 		*/
 		Object call_function(const std::string &name);
 
@@ -186,7 +186,7 @@ namespace Python
 		* is encountered while fetching the attribute.
 		*
 		* \param name The name of the attribute to be returned.
-		* \return Python::Object representing the attribute.
+		* \return pyl::Object representing the attribute.
 		*/
 		Object get_attr(const std::string &name);
 
@@ -217,11 +217,11 @@ namespace Python
 
 		template<class T>
 		bool convert(T &param) {
-			return Python::convert(py_obj.get(), param);
+			return pyl::convert(py_obj.get(), param);
 		}
 
 		/**
-		* \brief Constructs a Python::Object from a script.
+		* \brief Constructs a pyl::Object from a script.
 		*
 		* The returned Object will be the representation of the loaded
 		* script. If any errors are encountered while loading this

@@ -3,6 +3,11 @@
 # PyLiaison is importable anywhere
 import PyLiaison as pyl
 
+import ptvsd
+ptvsd.enable_attach(None)
+print('Waiting for python debugger...')
+ptvsd.wait_for_attach()
+
 # A simple function that invokes
 # another function from PyLiaison
 def SayHello():

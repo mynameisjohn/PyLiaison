@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 #include <utility>
-namespace Python
+namespace pyl
 {
     // This feels gross
     using voidptr_t = void *;

@@ -13,7 +13,7 @@
 
 #include "pyl_expose.h"
 
-namespace Python
+namespace pyl
 {
     // Mutex that gets locked when the interpreter runs simple commands
     // TODO there are plenty of commands other than PyRun_SimpleString

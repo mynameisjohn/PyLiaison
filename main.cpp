@@ -45,7 +45,7 @@ Vector3 testOverload(Vector3 v){
 }
 
 // Test unpacking a PyTuple
-void testPyTup(Python::Object obj){
+void testPyTup(pyl::Object obj){
 	// If you make a mistake here it's on you
 	std::tuple<int, float, int> t;
 	obj.convert(t);
@@ -90,44 +90,44 @@ int main()
 	// Expose functions and class functions
 	ExposeFuncs();
 
-	Python::ModuleDef * constantsModule = Python::AddModule<struct constantModule>("Constants", "Store constants here");
+	pyl::ModuleDef * constantsModule = pyl::AddModule<struct constantModule>("Constants", "Store constants here");
 
 	// All exposed functions should be exposed before this call
-	Python::initialize();
+	pyl::initialize();
 
 	int MAGIC = 42;
 	constantsModule->AsObject().set_attr("MAGIC", MAGIC);
 
-	Python::RunCmd("from " + ModName + " import *");
-	Python::RunCmd("import Constants");
-	Python::RunCmd("print(Constants.MAGIC)");
+	pyl::RunCmd("from " + ModName + " import *");
+	pyl::RunCmd("import Constants");
+	pyl::RunCmd("print(Constants.MAGIC)");
 
 	// Call testArgs with 1 and 2
-	Python::RunCmd("print(testArgs(1,2))");
+	pyl::RunCmd("print(testArgs(1,2))");
 
 	// Call testOverload, passing in a Vector3 and getting one back
-	Python::RunCmd("print(testOverload([1.,2.,3.]))");
+	pyl::RunCmd("print(testOverload([1.,2.,3.]))");
 
-	Python::RunCmd("print(testPyTup((1,2.,3)))");
+	pyl::RunCmd("print(testPyTup((1,2.,3)))");
 
 	// Make a foo instance
 	Foo fOne;
 
 	// Expose the Foo instance fOne
 	// into the main module
-	Python::ModuleDef * modH = Python::GetModuleHandle(ModName);
-	Python::Object modObj = modH->AsObject();
+	pyl::ModuleDef * modH = pyl::GetModuleHandle(ModName);
+	pyl::Object modObj = modH->AsObject();
 	modH->Expose_Object(&fOne, "g_Foo");
 
 	// Print some info
-	Python::RunCmd("print(g_Foo)");
+	pyl::RunCmd("print(g_Foo)");
 	// The () operator returns the address
-	Python::RunCmd("print(g_Foo())");
+	pyl::RunCmd("print(g_Foo())");
 
 	// Test member functions of Foo
-	Python::RunCmd("print(g_Foo.setVec([1.,3.,5.]))");
-	Python::RunCmd("print(g_Foo.getVec())");
-	Python::RunCmd("print(g_Foo.normalizeVec())");
+	pyl::RunCmd("print(g_Foo.setVec([1.,3.,5.]))");
+	pyl::RunCmd("print(g_Foo.getVec())");
+	pyl::RunCmd("print(g_Foo.normalizeVec())");
 
 	// We can also expose objects directly into the PyLiaison module
 	// As long as we do this before a module that imports PyLiaison
@@ -137,7 +137,7 @@ int main()
 
 	// Now load up our custom module
 	// note that the relative path may be wrong
-	auto scriptMod = Python::Object::from_script("../expose.py");
+	auto scriptMod = pyl::Object::from_script("../expose.py");
 
 	// Hello world
 	scriptMod.call_function("SayHello");
@@ -175,20 +175,20 @@ int main()
 
 // Expose all Python Functions
 void ExposeFuncs() {
-	Python::ModuleDef * mod = Python::AddModule<struct MyMod>(ModName);
+	pyl::ModuleDef * mod = pyl::AddModule<struct MyMod>(ModName);
 
 	// add testArgs(x, y): to the PyLiaison module
 //	Py_Add_Func("testArgs", testArgs, "test adding two args");
 	mod->Register_Function<struct testArgsT>("testArgs", 
-		Python::make_function(testArgs), "test passing args");
+		pyl::make_function(testArgs), "test passing args");
 
 	// add testOverload(v): to the PyLiaison module
-    //Py_Add_Func("testOverload", Python::make_function(testArgs), "where do I have to implement it?");
+    //Py_Add_Func("testOverload", pyl::make_function(testArgs), "where do I have to implement it?");
 	mod->Register_Function<struct testOverloadT>("testOverload", 
-		Python::make_function(testOverload), "test overloading a PyObject * conversion");
+		pyl::make_function(testOverload), "test overloading a PyObject * conversion");
  
 	mod->Register_Function<struct testPyTupT>("testPyTup", 
-		Python::make_function(testPyTup), "test passing something the host converts");
+		pyl::make_function(testPyTup), "test passing something the host converts");
 
 	// Register the Foo class
 	mod->Register_Class<Foo>("Foo");
@@ -213,7 +213,7 @@ void ExposeFuncs() {
 }
 
 // Implementation of conversion/allocation functions
-namespace Python
+namespace pyl
 {
 	// Convert a PyObjectobject to a Vector3
 	// this won't work unless the PyObject

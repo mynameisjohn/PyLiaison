@@ -4,7 +4,7 @@
 
 #include "pyl_classes.h"
 
-namespace Python
+namespace pyl
 {
 	// Pretty ridiculous
 	template <typename C>

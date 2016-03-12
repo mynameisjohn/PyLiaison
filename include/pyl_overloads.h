@@ -13,7 +13,7 @@
 // Forward your type here
 struct Vector3;
 
-namespace Python
+namespace pyl
 {
     // Declare the conversion
 	// (by reference, not pointer)
@@ -23,18 +23,18 @@ namespace Python
 	PyObject * alloc_pyobject(Vector3 v);
 }
 
-//#include <glm/fwd.hpp>
-//
-//namespace Python
-//{
-//	bool convert(PyObject * o, glm::vec2& v);
-//	bool convert(PyObject * o, glm::vec3& v);
-//	bool convert(PyObject * o, glm::vec4& v);
-//	bool convert(PyObject * o, glm::fquat& v);
-//}
-//
-//struct KeyState;
-//namespace Python
-//{
-//	PyObject * alloc_pyobject(const KeyState& v);
-//}
+#include <glm/fwd.hpp>
+
+namespace pyl
+{
+	bool convert(PyObject * o, glm::vec2& v);
+	bool convert(PyObject * o, glm::vec3& v);
+	bool convert(PyObject * o, glm::vec4& v);
+	bool convert(PyObject * o, glm::fquat& v);
+}
+
+struct KeyState;
+namespace pyl
+{
+	PyObject * alloc_pyobject(const KeyState& v);
+}

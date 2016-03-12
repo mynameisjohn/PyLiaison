@@ -17,7 +17,7 @@
 	Python::Register_Function<__LINE__>(std::string(name), Python::make_function(fn), docs)
 
 
-namespace Python
+namespace pyl
 {
 
 	class ModuleDef {// : public Object {
