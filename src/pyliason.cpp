@@ -20,8 +20,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <locale>
-#include <codecvt>
 
 #include "pyliason.h"
 
