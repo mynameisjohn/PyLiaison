@@ -278,15 +278,12 @@ namespace pyl
 		// In the example the first arg isn't a PyObject *, but... idk man
 		GenericPyClass * realPtr = static_cast<GenericPyClass *>((void *)self);
 		// The first argument is the capsule object
-		PyObject * c = PyTuple_GetItem(args, 0), *tmp(nullptr);
+		PyObject * c = PyTuple_GetItem(args, 0);
 		
 		if (c)
 		{// Or at least it better be
 			if (PyCapsule_CheckExact(c))
 			{
-				// These ref counts are all messed up
-				tmp = realPtr->capsule;
-
 				Py_INCREF(c);
 				realPtr->capsule = c;
 
@@ -600,8 +597,8 @@ namespace pyl
 
 	// Name and doc constructor
 	ModuleDef::ModuleDef( const std::string& moduleName, const std::string& moduleDocs ) :
-		m_strModName( moduleName ),
-		m_strModDocs( moduleDocs )
+		m_strModDocs( moduleDocs ),
+		m_strModName( moduleName )
 	{
 	}
 
