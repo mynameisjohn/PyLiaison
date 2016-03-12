@@ -11,7 +11,8 @@
 
 #include <mutex>
 
-#include "pyl_expose.h"
+#include "pyl_misc.h"
+#include "pyl_module.h"
 
 namespace pyl
 {

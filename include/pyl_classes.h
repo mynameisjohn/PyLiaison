@@ -1,6 +1,4 @@
 #pragma once
-
-
 #include <memory>
 
 #include <Python.h>
@@ -20,22 +18,21 @@ namespace pyl
 		}
 	};
 	// unique_ptr that uses Py_XDECREF as the destructor function.
-	typedef std::unique_ptr<PyObject, PyObjectDeleter> pyunique_ptr;
+	using pyunique_ptr = std::unique_ptr<PyObject, PyObjectDeleter> ;
 
-	// All exposed objects inherit from this
+	// All exposed objects inherit from this python type, which has a capsule
+	// member holding a pointer to the original object
 	struct GenericPyClass
 	{
         PyObject_HEAD
 		PyObject * capsule{ nullptr };
 	};
 
-	// We need to keep the method definition's
-	// string name and docs stored somewhere,
-	// where their references are good, since they're char *
-	// Also note! std::vectors can move in memory,
-	// so when once this is exposed to python it shouldn't
-	// be modified
-
+	// Several python APIs require a null terminated array of data
+	// So that's what this class does (every insertion goes before a null element)
+	// Because this uses a std::vector under the hood inserting will move things in memory,
+	// which is why it's important not to modify any of these structs after they've been 
+	// expsoed to the python interpreter
 	template <typename D>
 	struct _NullTermBuf
 	{
@@ -77,17 +74,6 @@ namespace pyl
 	// as well as a list of exposed instances
 	struct ExposedClass
 	{
-		// Instance struct
-		// Contains pointer to object
-		// and python var name
-		//struct Instance
-		//{
-		//	voidptr_t c_ptr;
-		//	std::string pyname;
-		//};
-		// A list of exposed C++ object pointers (why?)
-		//std::list<Instance> Instances;
-
 		// The name of the python class
 		std::string PyClassName;
         

@@ -8,7 +8,7 @@
 
 #include <Python.h>
 
-#include "pyl_expose.h"
+#include "pyl_module.h"
 #include "pyl_overloads.h"
 
 namespace pyl

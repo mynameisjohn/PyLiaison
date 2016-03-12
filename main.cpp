@@ -90,7 +90,7 @@ int main()
 	// Expose functions and class functions
 	ExposeFuncs();
 
-	pyl::ModuleDef * constantsModule = pyl::AddModule<struct constantModule>("Constants", "Store constants here");
+	pyl::ModuleDef * constantsModule = pyl::ModuleDef::CreateModuleDef<struct constantModule>("Constants", "Store constants here");
 
 	// All exposed functions should be exposed before this call
 	pyl::initialize();
@@ -115,7 +115,7 @@ int main()
 
 	// Expose the Foo instance fOne
 	// into the main module
-	pyl::ModuleDef * modH = pyl::GetModuleHandle(ModName);
+	pyl::ModuleDef * modH = pyl::ModuleDef::GetModuleDef(ModName);
 	pyl::Object modObj = modH->AsObject();
 	modH->Expose_Object(&fOne, "g_Foo");
 
@@ -175,40 +175,40 @@ int main()
 
 // Expose all Python Functions
 void ExposeFuncs() {
-	pyl::ModuleDef * mod = pyl::AddModule<struct MyMod>(ModName);
+	pyl::ModuleDef * mod = pyl::ModuleDef::CreateModuleDef<struct MyMod>(ModName);
 
 	// add testArgs(x, y): to the PyLiaison module
 //	Py_Add_Func("testArgs", testArgs, "test adding two args");
-	mod->Register_Function<struct testArgsT>("testArgs", 
+	mod->RegisterFunction<struct testArgsT>("testArgs", 
 		pyl::make_function(testArgs), "test passing args");
 
 	// add testOverload(v): to the PyLiaison module
     //Py_Add_Func("testOverload", pyl::make_function(testArgs), "where do I have to implement it?");
-	mod->Register_Function<struct testOverloadT>("testOverload", 
+	mod->RegisterFunction<struct testOverloadT>("testOverload",
 		pyl::make_function(testOverload), "test overloading a PyObject * conversion");
  
-	mod->Register_Function<struct testPyTupT>("testPyTup", 
+	mod->RegisterFunction<struct testPyTupT>("testPyTup",
 		pyl::make_function(testPyTup), "test passing something the host converts");
 
 	// Register the Foo class
-	mod->Register_Class<Foo>("Foo");
+	mod->RegisterClass<Foo>("Foo");
 
 	// Register member functions of Foo
 	std::function<Vector3(Foo *)> Foo_getVec(&Foo::getVec);
-	mod->Register_Mem_Function<Foo, struct Foo_getVecT>("getVec", Foo_getVec,
+	mod->RegisterMemFunction<Foo, struct Foo_getVecT>("getVec", Foo_getVec,
 		"Get the m_Vec3 member of a Foo instance");
 	std::function<void(Foo *, Vector3)> Foo_setVec(&Foo::setVec);
-	mod->Register_Mem_Function<Foo, struct Foo_setVecT>("setVec", Foo_setVec,
+	mod->RegisterMemFunction<Foo, struct Foo_setVecT>("setVec", Foo_setVec,
 		"Set the m_Vec3 member of a Foo instance with a list");
 	std::function<void(Foo *)> Foo_nrmVec(&Foo::normalizeVec);
-	mod->Register_Mem_Function<Foo, struct Foo_nrmVecT>("normalizeVec", Foo_nrmVec,
+	mod->RegisterMemFunction<Foo, struct Foo_nrmVecT>("normalizeVec", Foo_nrmVec,
 		"normalize the m_Vec3 member of a Foo instance");
 
 	// Expose one function of Vector3, just to prove it's possible
-	mod->Register_Class<Vector3>("Vector3");
+	mod->RegisterClass<Vector3>("Vector3");
 
 	std::function<float(Vector3 *)> Vec3_len(&Vector3::len); // len is a keyword
-	mod->Register_Mem_Function<Vector3, struct Vec3_lenT_>("length()", Vec3_len,
+	mod->RegisterMemFunction<Vector3, struct Vec3_lenT_>("length()", Vec3_len,
 		"get the length, or magnitude, of the vector");
 }
 

@@ -25,13 +25,13 @@
 
 #include "pyliason.h"
 
+#include "pyl_module.h"
+#include "pyl_misc.h"
+
 namespace pyl 
 {
 	using std::runtime_error;
 	using std::string;
-
-	std::map<std::string, ModuleDef> __g_MapPyModules;
-	std::mutex CmdMutex;
 
 	Object::Object() {
 
@@ -120,8 +120,10 @@ namespace pyl
 		// Finalize any previous stuff
 		Py_Finalize();
 
-		for (auto& mod : __g_MapPyModules)
-			mod.second.__init();
+		//for (auto& mod : __g_MapPyModules)
+		//	mod.second.__init();
+
+		ModuleDef::InitAllModules();
 
 		// Call the _Mod_Init function when my module is imported
 		// PyImport_AppendInittab(ModuleName.c_str(), _Mod_Init);
@@ -446,88 +448,234 @@ namespace pyl
 	//	return Object(plMod);
 	//}
 
-	std::string ModuleDef::__getNameStr() const {
-		return m_strModName;
+	//std::string ModuleDef::__getNameStr() const {
+	//	return m_strModName;
+	//}
+
+	//Object GetModuleObj(std::string modName) {
+	//	auto it = __g_MapPyModules.find(modName);
+	//	if (it == __g_MapPyModules.end())
+	//		return nullptr;
+
+	//	PyObject * plMod = PyImport_ImportModule(it->second.__getNameBuf());
+	//	
+	//	return plMod;
+	//}
+
+	//ModuleDef * GetModuleHandle(std::string modName) {
+	//	auto it = __g_MapPyModules.find(modName);
+	//	if (it == __g_MapPyModules.end())
+	//		return nullptr;
+
+	//	return &it->second;
+	//}
+
+	//Object ModuleDef::AsObject() const{
+	//	return GetModuleObj(m_strModName);
+	//}
+
+	//int ModuleDef::exposeObject_impl( type_info T, voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
+	//	// If we haven't declared the class, we can't expose it
+	//	auto it = m_mapExposedClasses.find( T );
+	//	if ( it == m_mapExposedClasses.end() )
+	//		return -1;
+
+	//	// If a module wasn't specified, just do main
+	//	mod = mod ? mod : PyImport_ImportModule( "__main__" );
+	//	if ( mod == nullptr )
+	//	{
+	//		// ...
+	//	}
+
+	//	// Allocate a new object instance given the PyTypeObject
+	//	PyObject* newPyObject = _PyObject_New(&expCls.m_TypeObject);
+
+	//	// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
+	//	PyObject* capsule = PyCapsule_New(instance, NULL, NULL);
+
+	//	// Set the c_ptr member variable (which better exist) to the capsule
+	//	static_cast<GenericPyClass *>((voidptr_t)newPyObject)->capsule = capsule;
+
+	//	// Make a variable in the module out of the new py object
+	//	int success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
+	//	if (success != 0) {
+	//		std::string modName("module");
+	//		convert(PyObject_Str(mod), modName);
+	//		std::cout << "Error adding attr " << name << " to module " << modName << std::endl;
+	//	}
+	//	
+	//	// decref and return
+	//	Py_DECREF(mod);
+	//	Py_DECREF(newPyObject);
+
+	//	return success;
+	//}
+
+	//ModuleDef::ModuleDef() {
+	//}
+
+	//ModuleDef::ModuleDef(std::string modName, std::string modDocs) :
+	//	ModuleDef()
+	//{
+	//	m_strModName = modName;
+	//	m_strModDocs = modDocs;
+	//}
+
+	//const char * ModuleDef::__getNameBuf() const {
+	//	return m_strModName.c_str();
+	//}
+
+	//void ModuleDef::__init() {
+	//	// Lock down any definitions
+	//	for (auto& e_Class : m_mapExposedClasses)
+	//		e_Class.second.Prepare();
+	//}
+
+	//void ModuleDef::createFnObject() {
+	//	// Moving this here, seems safer
+	//	const char * nameBuf = m_strModName.c_str();
+	//	const char * docBuf = m_strModDocs.c_str();
+	//	MethodDefinitions * defPtr =& m_vMethodDef;
+	//	std::map<std::type_index, ExposedClass>* expClassMap = &m_mapExposedClasses;
+	//	m_fnModInit = [nameBuf, docBuf, defPtr, expClassMap]() {
+	//		// Is it fair to assume the method def is ready?
+	//		// The MethodDef contains all functions defined in C++ code,
+	//		// including those called into by exposed classes
+
+	//		ModDef = PyModuleDef
+	//		{
+	//			PyModuleDef_HEAD_INIT,
+	//			nameBuf,
+	//			docBuf,
+	//			-1,
+	//			defPtr->Ptr()
+	//		};
+
+	//		PyObject * mod = PyModule_Create(&ModDef);
+
+	//		// Is now the time to declare all classes?
+	//		for (auto& exp_class : *expClassMap) {
+	//			auto pTypeObj = (PyTypeObject *)&(exp_class.second.m_TypeObject);
+	//			if (PyType_Ready(pTypeObj) < 0)
+	//				assert(false);
+
+	//			const char * className = exp_class.second.PyClassName.c_str();
+	//			PyObject * typeObj = (PyObject *)&exp_class.second.m_TypeObject;
+	//			PyModule_AddObject(mod, className, typeObj);
+	//		}
+
+	//		return mod;
+	//	};
+	//}
+
+	//void ModuleDef::registerClass_impl( type_info T, std::string& className )
+	//{
+	//	auto it = m_mapExposedClasses.find( T );
+	//	if ( it != m_mapExposedClasses.end() )
+	//		return;
+
+	//	m_mapExposedClasses.emplace( T, className );
+	//}
+
+	//ModuleDef * __addModule_impl( std::string& modName, std::string& modDocs )
+	//{
+	//	// If we've already added this, return a pointer to it
+	//	auto it = __g_MapPyModules.find( modName );
+	//	if ( it != __g_MapPyModules.end() )
+	//		return &it->second;
+
+	//	ModuleDef * pMod = &__g_MapPyModules[modName] = ModuleDef::Create( modName, modDocs );
+	//}
+
+
+
+
+
+
+
+
+
+
+
+	// Static map declaration
+	std::map<std::string, ModuleDef> s_mapPyModules;
+
+	// Name and doc constructor
+	ModuleDef::ModuleDef( const std::string& moduleName, const std::string& moduleDocs ) :
+		m_strModName( moduleName ),
+		m_strModDocs( moduleDocs )
+	{
 	}
 
-	Object GetModuleObj(std::string modName) {
-		auto it = __g_MapPyModules.find(modName);
-		if (it == __g_MapPyModules.end())
-			return nullptr;
-		PyObject * plMod = PyImport_ImportModule(it->second.__getNameBuf());
-		return plMod;
+	// This is implemented here just to avoid putting these STL calls in the header
+	void ModuleDef::registerClass_impl( const std::type_index T, const std::string& className )
+	{
+		// If we've already exposed this, don't bother
+		auto it = m_mapExposedClasses.find( T );
+		if ( it != m_mapExposedClasses.end() )
+			return;
+
+		// Add the type info to the map
+		m_mapExposedClasses.emplace( T, className );
 	}
 
-	ModuleDef * GetModuleHandle(std::string modName) {
-		auto it = __g_MapPyModules.find(modName);
-		if (it == __g_MapPyModules.end())
-			return nullptr;
-		return &it->second;
-	}
+	// Implementation of expose object function that doesn't need to be in this header file
+	int ModuleDef::exposeObject_impl( const std::type_index T, const voidptr_t instance, const std::string& name, PyObject * mod )
+	{
+		// If we haven't declared the class, we can't expose it
+		auto it = m_mapExposedClasses.find( T );
+		if ( it == m_mapExposedClasses.end() )
+			return -1;
 
-	Object ModuleDef::AsObject() const{
-		return GetModuleObj(m_strModName);
-	}
+		// Make ref to expose class object
+		ExposedClass& expCls = it->second;
 
-	int ModuleDef::__exposeObjectImpl(voidptr_t instance, ExposedClass& expCls, const std::string& name, PyObject * mod) {
+		// If a module wasn't specified, just do main
+		mod = mod ? mod : PyImport_ImportModule( "__main__" );
+		if ( mod == nullptr )
+			return -1;
+
 		// Allocate a new object instance given the PyTypeObject
-		PyObject* newPyObject = _PyObject_New(&expCls.m_TypeObject);
+		PyObject* newPyObject = _PyObject_New( &expCls.m_TypeObject );
 
 		// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
-		PyObject* capsule = PyCapsule_New(instance, NULL, NULL);
+		PyObject* capsule = PyCapsule_New( instance, NULL, NULL );
 
 		// Set the c_ptr member variable (which better exist) to the capsule
-		static_cast<GenericPyClass *>((voidptr_t)newPyObject)->capsule = capsule;
+		static_cast<GenericPyClass *>((voidptr_t) newPyObject)->capsule = capsule;
 
 		// Make a variable in the module out of the new py object
-		int success = PyObject_SetAttrString(mod, name.c_str(), newPyObject);
-		if (success != 0) {
-			std::string modName("module");
-			convert(PyObject_Str(mod), modName);
-			std::cout << "Error adding attr " << name << " to module " << modName << std::endl;
+		int success = PyObject_SetAttrString( mod, name.c_str(), newPyObject );
+		if ( success != 0 )
+		{
+			// TODO make some kind of exception that this can raise
+			return success;
 		}
 
-		// Right now I don't know why we should keep them
-		//expCls.Instances.push_back({ instance, name });
-
 		// decref and return
-		Py_DECREF(mod);
-		Py_DECREF(newPyObject);
+		Py_DECREF( mod );
+		Py_DECREF( newPyObject );
 
-		return 0;
+		return success;
 	}
 
-	ModuleDef::ModuleDef() {
-	}
-
-	ModuleDef::ModuleDef(std::string modName, std::string modDocs) :
-		ModuleDef()
+	// Create the function object invoked when this module is imported
+	void ModuleDef::createFnObject()
 	{
-		m_strModName = modName;
-		m_strModDocs = modDocs;
-	}
-
-	const char * ModuleDef::__getNameBuf() const {
-		return m_strModName.c_str();
-	}
-
-	void ModuleDef::__init() {
-		// Lock down any definitions
-		for (auto& e_Class : m_mapExposedClasses)
-			e_Class.second.Prepare();
-	}
-
-	void ModuleDef::createFnObject() {
-		// Moving this here, seems safer
+		// We declare these pointers here acting under the assumption that they will
+		// remain valid (which means that no strings can be reassigned, no methods can
+		// be added, and no classes can be exposed after this call.)
 		const char * nameBuf = m_strModName.c_str();
 		const char * docBuf = m_strModDocs.c_str();
-		MethodDefinitions * defPtr =& m_vMethodDef;
+		MethodDefinitions * defPtr = &m_vMethodDef;
 		std::map<std::type_index, ExposedClass>* expClassMap = &m_mapExposedClasses;
-		m_fnModInit = [nameBuf, docBuf, defPtr, expClassMap]() {
-			// Is it fair to assume the method def is ready?
+
+		// Declare the init function, which gets called on import and returns a PyObject *
+		// that represent the module itself
+		m_fnModInit = [nameBuf, docBuf, defPtr, expClassMap] ()
+		{
 			// The MethodDef contains all functions defined in C++ code,
 			// including those called into by exposed classes
-
 			ModDef = PyModuleDef
 			{
 				PyModuleDef_HEAD_INIT,
@@ -537,36 +685,69 @@ namespace pyl
 				defPtr->Ptr()
 			};
 
-			PyObject * mod = PyModule_Create(&ModDef);
-			//if (mod == nullptr) ...
+			// Create the module if possible
+			if ( PyObject * mod = PyModule_Create( &ModDef ) )
+			{
+				// Declare all exposed classes within the module
+				for ( auto& exp_class : *expClassMap )
+				{
+					// Get the classes PyTypeObject
+					auto pTypeObj = (PyTypeObject *) &(exp_class.second.m_TypeObject);
+					if ( PyType_Ready( pTypeObj ) < 0 )
+						assert( false );
 
-			//std::string errName = ModuleName + ".error";
-			//Py_ErrorObj = PyErr_NewException((char *)errName.c_str(), 0, 0);
-			//Py_XINCREF(Py_ErrorObj);
-			//PyModule_AddObject(mod, "error", Py_ErrorObj);
+					// Again, we are acting under the assumption that these pointers remain valid
+					const char * className = exp_class.second.PyClassName.c_str();
+					PyObject * typeObj = (PyObject *) &exp_class.second.m_TypeObject;
 
-			// Is now the time to declare all classes?
-			for (auto& exp_class : *expClassMap) {
-				auto pTypeObj = (PyTypeObject *)&(exp_class.second.m_TypeObject);
-				if (PyType_Ready(pTypeObj) < 0)
-					assert(false);
+					// Add the type to the module
+					PyModule_AddObject( mod, className, typeObj );
+				}
 
-				const char * className = exp_class.second.PyClassName.c_str();
-				PyObject * typeObj = (PyObject *)&exp_class.second.m_TypeObject;
-				PyModule_AddObject(mod, className, typeObj);
+				// Return the created module
+				return mod;
 			}
 
-			return mod;
+			// If creating the module failed for whatever reason
+			return (PyObject *)nullptr;
 		};
 	}
 
-	PyFunc __getPyFunc_Case4etPyFunc_Case4(std::function<void()> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a)
-		{
-			fn();
-			Py_INCREF(Py_None);
-			return Py_None;
-		};
-		return pFn;
+	// This function locks down any exposed class definitions
+	void ModuleDef::prepareClasses()
+	{
+		// Lock down any definitions
+		for ( auto& e_Class : m_mapExposedClasses )
+			e_Class.second.Prepare();
+	}
+
+	/*static*/ ModuleDef * ModuleDef::GetModuleDef( const std::string moduleName )
+	{
+		// Return nullptr if we don't have this module
+		auto it = s_mapPyModules.find( moduleName );
+		if ( it == s_mapPyModules.end() )
+			return nullptr;
+
+		// Otherwise return the address of the definition
+		return &it->second;
+	}
+
+	Object ModuleDef::AsObject() const
+	{
+		auto it = s_mapPyModules.find( m_strModName );
+		if ( it == s_mapPyModules.end() )
+			return nullptr;
+
+		PyObject * plMod = PyImport_ImportModule( m_strModName.c_str() );
+
+		return plMod;
+	}
+
+	/*static*/ int ModuleDef::InitAllModules()
+	{
+		for ( auto& module : s_mapPyModules )
+			module.second.prepareClasses();
+
+		return 0;
 	}
 }
