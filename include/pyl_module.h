@@ -274,7 +274,7 @@ namespace pyl
 		...
 		R returnedVal = c.methodName();
 		*/
-		template <typename C, typename tag, typename R, typename Callable>
+		template <typename C, typename tag, typename R>
 		void RegisterMemFunction( const std::string methodName, std::function<R( C * )> fn, const std::string docs = "" )
 		{
 			PyFunc pFn = __getPyFunc_Mem_Case3<C>( fn );
