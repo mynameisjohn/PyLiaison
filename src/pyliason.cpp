@@ -236,8 +236,8 @@ namespace pyl
 	}
 
 	// These are the black sheep for now
-	PyModuleDef ModDef;
-	std::string ModDocs;
+	//PyModuleDef ModDef;
+	//std::string ModDocs;
 
 	// We only need one instance of the above, shared by exposed objects
 	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
@@ -444,15 +444,16 @@ namespace pyl
 		const char * nameBuf = m_strModName.c_str();
 		const char * docBuf = m_strModDocs.c_str();
 		MethodDefinitions * defPtr = &m_vMethodDef;
+		PyModuleDef * pModDef = &m_pyModDef;
 		std::map<std::type_index, ExposedClass>* expClassMap = &m_mapExposedClasses;
 
 		// Declare the init function, which gets called on import and returns a PyObject *
 		// that represent the module itself
-		m_fnModInit = [nameBuf, docBuf, defPtr, expClassMap] ()
+		m_fnModInit = [nameBuf, docBuf, defPtr, pModDef, expClassMap] ()
 		{
 			// The MethodDef contains all functions defined in C++ code,
 			// including those called into by exposed classes
-			ModDef = PyModuleDef
+			*pModDef = PyModuleDef
 			{
 				PyModuleDef_HEAD_INIT,
 				nameBuf,
@@ -462,7 +463,7 @@ namespace pyl
 			};
 
 			// Create the module if possible
-			if ( PyObject * mod = PyModule_Create( &ModDef ) )
+			if ( PyObject * mod = PyModule_Create( pModDef ) )
 			{
 				// Declare all exposed classes within the module
 				for ( auto& exp_class : *expClassMap )
