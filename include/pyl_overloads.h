@@ -20,5 +20,5 @@ namespace pyl
 	bool convert(PyObject * o, Vector3& v);
 
 	// Declare allocation
-	PyObject * alloc_pyobject(Vector3 v);
+	PyObject * alloc_pyobject(Vector3& v);
 }

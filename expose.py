@@ -4,15 +4,15 @@
 import PyLiaison as pyl
 
 import ptvsd
-ptvsd.enable_attach(None)
-print('Waiting for python debugger...')
-ptvsd.wait_for_attach()
+#ptvsd.enable_attach(None)
+#print('Waiting for python debugger...')
+#ptvsd.wait_for_attach()
 
 # A simple function that invokes
 # another function from PyLiaison
 def SayHello():
 	print('Hello, friend')
-	print(pyl.testArgs(1,3))
+	print(pyl.testAddArgs(1,3))
 
 # This will be exposed
 # Note that you don't
