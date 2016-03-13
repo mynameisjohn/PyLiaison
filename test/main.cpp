@@ -5,78 +5,7 @@ using namespace std;
 
 #include "pyl_overloads.h"
 
-// Callable from python
-int testArgs(int x, int y) {
-	return x + y;
-}
-
-// You can pass one of these back and forth
-// between the interpreter and host program
-struct Vector3
-{
-	// Three float members
-    float x{0};
-	float y{0};
-	float z{0};
-
-	// Vector length
-	float len(){
-		return sqrt(x*x + y*y + z*z);
-	}
-
-	// Element access
-	float& operator[](int idx){
-		return ((float *)this)[idx];
-	}
-};
-
-// You can call this function; it
-// takes in a list of three floats
-// from python, interprets it as a Vector3,
-// and normalizes it.
-// See the implementation
-// of the c++ <==> python conversions
-// at the bottom of this file
-Vector3 testOverload(Vector3 v){
-	Vector3 nrm_v = v;
-	for (int i=0; i<3; i++)
-		nrm_v[i] /= v.len();
-	return nrm_v;
-}
-
-// Test unpacking a PyTuple
-void testPyTup(pyl::Object obj){
-	// If you make a mistake here it's on you
-	std::tuple<int, float, int> t;
-	obj.convert(t);
-	std::cout << std::get<0>(t) << ", " << std::get<1>(t) << ", " << std::get<2>(t) << std::endl;
-}
-
-// Expose this class in python
-class Foo {
-	Vector3 m_Vec3;
-
-public:
-	// Useless default ctor
-	// The rest are python callable
-	Foo(){}
-	
-	// get m_Vec3 member
-	Vector3 getVec(){
-		return m_Vec3;
-	}
-
-	// set m_Vec3 member
-	void setVec(Vector3 v){
-		m_Vec3 = v;
-	}
-
-	// normalize m_Vec3 member
-	void normalizeVec(){
-		// testOverload already does this
-		m_Vec3 = testOverload(m_Vec3);
-	}
-};
+#include "pylTestClasses.h"
 
 // Expose things to Python via the
 // PyLiaison module; see implementation
@@ -95,39 +24,56 @@ int main()
 	// All exposed functions should be exposed before this call
 	pyl::initialize();
 
-	int MAGIC = 42;
-	constantsModule->AsObject().set_attr("MAGIC", MAGIC);
+	// Declare a float called fPI in the constants module
+	// with the value set below (can be done before or after import)
+	float fPI = 3.14f;
+	constantsModule->AsObject().set_attr( "fPI", fPI );
 
+	// Import our custom modules
 	pyl::RunCmd("from " + ModName + " import *");
 	pyl::RunCmd("import Constants");
-	pyl::RunCmd("print(Constants.MAGIC)");
+
+	// Test the float declared above. Note that this is differnent from
+	// exposing an object, there is a standalone float value inside this module
+	pyl::RunCmd( "print('This should be 3.14f: ', Constants.fPI)" );
+	
+	// Declare an int in the constants module called MAGIC
+	// (we are proving that you can declare things after import)
+	int MAGIC = 42;
+	constantsModule->AsObject().set_attr( "MAGIC", MAGIC );
+
+	// Prove that the int was exposed
+	pyl::RunCmd("print('The magic number 42 ==', Constants.MAGIC)");
 
 	// Call testArgs with 1 and 2
-	pyl::RunCmd("print(testArgs(1,2))");
+	pyl::RunCmd("print('1 + 2 =', testAddArgs(1,2))");
 
 	// Call testOverload, passing in a Vector3 and getting one back
 	pyl::RunCmd("print(testOverload([1.,2.,3.]))");
 
-	pyl::RunCmd("print(testPyTup((1,2.,3)))");
+	// We expect to see this tuple in the testPyTup function
+	pyl::RunCmd("testPyTup((1,2.,3))");
 
 	// Make a foo instance
 	Foo fOne;
 
-	// Expose the Foo instance fOne
-	// into the main module
+	// Expose the Foo instance fOne into the
+	// main module under the name g_Foo
 	pyl::ModuleDef * modH = pyl::ModuleDef::GetModuleDef(ModName);
 	pyl::Object modObj = modH->AsObject();
 	modH->Expose_Object(&fOne, "g_Foo");
 
 	// Print some info
 	pyl::RunCmd("print(g_Foo)");
+
 	// The () operator returns the address
 	pyl::RunCmd("print(g_Foo())");
 
 	// Test member functions of Foo
-	pyl::RunCmd("print(g_Foo.setVec([1.,3.,5.]))");
-	pyl::RunCmd("print(g_Foo.getVec())");
-	pyl::RunCmd("print(g_Foo.normalizeVec())");
+	pyl::RunCmd("g_Foo.setVec([1.,3.,5.])");
+	pyl::RunCmd("print('Vector was ', g_Foo.getVec())");
+	pyl::RunCmd("g_Foo.normalizeVec()");
+	pyl::RunCmd( "print('Vector is now ', g_Foo.getVec())" );
 
 	// We can also expose objects directly into the PyLiaison module
 	// As long as we do this before a module that imports PyLiaison
@@ -173,19 +119,51 @@ int main()
 	return EXIT_SUCCESS;
 }
 
+
+// Callable from python
+int testAddArgs( int x, int y )
+{
+	return x + y;
+}
+
+// You can call this function; it
+// takes in a list of three floats
+// from python, interprets it as a Vector3,
+// and normalizes it.
+// See the implementation
+// of the c++ <==> python conversions
+// at the bottom of this file
+Vector3 testDataTransfer( Vector3 v )
+{
+	Vector3 nrm_v = v;
+	for ( int i = 0; i<3; i++ )
+		nrm_v[i] /= v.len();
+	return nrm_v;
+}
+
+
+// Test unpacking a PyTuple
+void testPyTup( pyl::Object obj )
+{
+	// If you make a mistake here it's on you
+	std::tuple<int, float, int> t;
+	obj.convert( t );
+	std::cout << "We've received <" << std::get<0>( t ) << ", " << std::get<1>( t ) << ", " << std::get<2>( t ) << "> from a python tuple" << std::endl;
+}
+
 // Expose all Python Functions
 void ExposeFuncs() {
 	pyl::ModuleDef * mod = pyl::ModuleDef::CreateModuleDef<struct MyMod>(ModName);
 
 	// add testArgs(x, y): to the PyLiaison module
 //	Py_Add_Func("testArgs", testArgs, "test adding two args");
-	mod->RegisterFunction<struct testArgsT>("testArgs", 
-		pyl::make_function(testArgs), "test passing args");
+	mod->RegisterFunction<struct testAddArgsT>("testAddArgs", 
+		pyl::make_function( testAddArgs ), "test passing args");
 
 	// add testOverload(v): to the PyLiaison module
     //Py_Add_Func("testOverload", pyl::make_function(testArgs), "where do I have to implement it?");
-	mod->RegisterFunction<struct testOverloadT>("testOverload",
-		pyl::make_function(testOverload), "test overloading a PyObject * conversion");
+	mod->RegisterFunction<struct testDataTransferT>("testOverload",
+		pyl::make_function( testDataTransfer ), "test overloading a PyObject * conversion");
  
 	mod->RegisterFunction<struct testPyTupT>("testPyTup",
 		pyl::make_function(testPyTup), "test passing something the host converts");
@@ -197,9 +175,11 @@ void ExposeFuncs() {
 	std::function<Vector3(Foo *)> Foo_getVec(&Foo::getVec);
 	mod->RegisterMemFunction<Foo, struct Foo_getVecT>("getVec", Foo_getVec,
 		"Get the m_Vec3 member of a Foo instance");
+
 	std::function<void(Foo *, Vector3)> Foo_setVec(&Foo::setVec);
 	mod->RegisterMemFunction<Foo, struct Foo_setVecT>("setVec", Foo_setVec,
 		"Set the m_Vec3 member of a Foo instance with a list");
+	
 	std::function<void(Foo *)> Foo_nrmVec(&Foo::normalizeVec);
 	mod->RegisterMemFunction<Foo, struct Foo_nrmVecT>("normalizeVec", Foo_nrmVec,
 		"normalize the m_Vec3 member of a Foo instance");
@@ -223,7 +203,7 @@ namespace pyl
     }
 
 	// Convert a Vector3 to a PyList
-	PyObject * alloc_pyobject(Vector3 v){
+	PyObject * alloc_pyobject(Vector3& v){
 		PyObject * pyVec = PyList_New(3);
 		for (int i=0; i<3; i++)
 			PyList_SetItem(pyVec, i, alloc_pyobject(v[i]));
