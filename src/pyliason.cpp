@@ -235,10 +235,6 @@ namespace pyl
 		return false;
 	}
 
-	// These are the black sheep for now
-	//PyModuleDef ModDef;
-	//std::string ModDocs;
-
 	// We only need one instance of the above, shared by exposed objects
 	static int PyClsInit (PyObject * self, PyObject * args, PyObject * kwds) 
 	{
@@ -375,6 +371,12 @@ namespace pyl
 
 	// Static module map map declaration
 	std::map<std::string, ModuleDef> ModuleDef::s_mapPyModules;
+
+	// This should never be called
+	ModuleDef::ModuleDef()
+	{
+		//assert( false && "Please don't construct Modules on your own, they won't be visible to the interpreter" );
+	}
 
 	// Name and doc constructor
 	ModuleDef::ModuleDef( const std::string& moduleName, const std::string& moduleDocs ) :
@@ -526,5 +528,10 @@ namespace pyl
 			module.second.prepareClasses();
 
 		return 0;
+	}
+
+	const char * ModuleDef::getNameBuf() const
+	{
+		return m_strModName.c_str();
 	}
 }

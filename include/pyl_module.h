@@ -60,7 +60,7 @@ namespace pyl
 		PyModuleDef m_pyModDef;											/*!< The actual Python module def */
 		std::string m_strModDocs;										/*!< The string containing module docs */
 		std::string m_strModName;										/*!< The string containing the module name */
-		std::function<PyObject *()> m_fnModInit;						/*!< Internal function called on import */
+		std::function<PyObject *()> m_fnModInit;						/*!< Function called on import that creates the module*/
 
 	// These are internal functions used by the expose APIs that create functions
 	private:
@@ -107,6 +107,12 @@ namespace pyl
 
 		// Calls the prepare function on all of our exposed classes
 		void prepareClasses();
+
+		// When pyl::ModuleDef::CreateModuleDef is called, the module created is added to the list of builtin modules via PyImport_AppendInittab.
+		// The PyImport_AppendInittab function relies on a live char * to the module's name provided by this interface. 
+		// Doing it any other way, or doing it in such a way that the char * will not remain valid, will prevent your module from 
+		// being imported (which is why they're stored in a map, where references are not invalidated.) 
+		const char * getNameBuf() const;
 
 		// The public expose APIs
 	public:
@@ -372,8 +378,8 @@ namespace pyl
 			// Create an initialize m_fnModInit
 			mod.createFnObject();
 
-			// Make sure m_fnModInit gets called when imported (is fn ptr safe?)
-			int success = PyImport_AppendInittab( moduleName.c_str(), get_fn_ptr<tag>( mod.m_fnModInit ) );
+			// Add this module to the list of builtin modules, and ensure m_fnModInit gets called on import
+			int success = PyImport_AppendInittab( mod.getNameBuf(), get_fn_ptr<tag>( mod.m_fnModInit ) );
 
 			return &mod;
 		}
@@ -412,6 +418,6 @@ namespace pyl
 		static int InitAllModules();
 
 		// Don't ever call this... it isn't even implemented, but some STL containers demand that it exists
-		ModuleDef() {}
+		ModuleDef();
 	};
 }
