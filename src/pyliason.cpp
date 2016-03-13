@@ -353,6 +353,11 @@ namespace pyl
 		_insert(member);
 	}
 
+	int RunCmd( std::string cmd )
+	{
+		return PyRun_SimpleString( cmd.c_str() );
+	}
+
 	int RunFile(std::string file)
 	{
 		std::ifstream in(file);
@@ -368,8 +373,8 @@ namespace pyl
 		return ret;
 	}
 
-	// Static map declaration
-	std::map<std::string, ModuleDef> s_mapPyModules;
+	// Static module map map declaration
+	std::map<std::string, ModuleDef> ModuleDef::s_mapPyModules;
 
 	// Name and doc constructor
 	ModuleDef::ModuleDef( const std::string& moduleName, const std::string& moduleDocs ) :

@@ -412,6 +412,6 @@ namespace pyl
 		static int InitAllModules();
 
 		// Don't ever call this... it isn't even implemented, but some STL containers demand that it exists
-		ModuleDef();
+		ModuleDef() {}
 	};
 }

@@ -32,6 +32,14 @@
 #include "pyl_misc.h"
 #include "pyl_module.h"
 
+
+/********************************************//*!
+	\namespace pyl
+	\brief The namespace in which Pyliaison functionality lives
+
+	The Pyliaison (pyl) namespace contains all of the classes and functions
+	used when facilitating communication between C++ and Python
+***********************************************/
 namespace pyl
 {
 	/********************************************//*!
@@ -61,9 +69,7 @@ namespace pyl
 	\param[in] cmd The string based python command
 	\param[out] ret The integer returned by PyRun_SimpleString
 	***********************************************/
-	int RunCmd(std::string cmd) {
-		return PyRun_SimpleString(cmd.c_str());
-	}
+	int RunCmd( std::string cmd );
 	
 	/********************************************//*!
 	pyl::RunFile
