@@ -56,7 +56,7 @@ int main( int argc, char ** argv )
 			std::cout << str << "\n";
 		std::cout << std::endl;
 
-		// finalie the interpeter
+		// finalize the interpeter
 		pyl::finalize();
 		return EXIT_SUCCESS;
 	}
