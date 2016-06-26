@@ -86,7 +86,7 @@ namespace pyl
 		return obj;
 	}
 
-	Object Object::call_function(const std::string &name) {
+	Object Object::call(const std::string name) {
 		pyunique_ptr func(load_function(name));
 		PyObject *ret(PyObject_CallObject(func.get(), 0));
 		if (!ret)

@@ -204,7 +204,7 @@ namespace pyl
 		* \return pyl::Object containing the result of the function.
 		*/
 		template<typename... Args>
-		Object call_function(const std::string &name, const Args&... args) {
+		Object call(const std::string name, const Args&... args) {
 			pyunique_ptr func(load_function(name));
 			// Create the tuple argument
 			pyunique_ptr tup(PyTuple_New(sizeof...(args)));
@@ -229,7 +229,7 @@ namespace pyl
 		* \param name The name of the callable attribute to be executed.
 		* \return pyl::Object containing the result of the function.
 		*/
-		Object call_function(const std::string &name);
+		Object call(const std::string name);
 
 		/**
 		* \brief Finds and returns the attribute named "name".
@@ -241,6 +241,16 @@ namespace pyl
 		* \return pyl::Object representing the attribute.
 		*/
 		Object get_attr(const std::string &name);
+
+		// Like above, but without converts as well
+		template<typename T>
+		bool get_attr( const std::string strName, T& obj )
+		{
+			Object o = get_attr( strName );
+			if ( o.get() != nullptr )
+				return o.convert( obj );
+			return false;
+		}
 
 		/**
 		* \brief Checks whether this object contains a certain attribute.
