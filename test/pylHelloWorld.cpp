@@ -3,7 +3,7 @@
 
 int main( int argc, char ** argv )
 {
-	// We may get an exception from the interpreter if somethign is amiss
+	// We may get an exception from the interpreter if something is amiss
 	try
 	{
 		// Initialize the python interpreter

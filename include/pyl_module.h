@@ -457,9 +457,15 @@ namespace pyl
 #define S1(x) #x
 #define S2(x) S1(x)
 
-#define AddFnToMod(F, R, M, ...)\
-	M->RegisterFunction<struct __st_fn##F>(#F, pyl::make_function(F));
+#define CreateMod(strModName)\
+	pyl::ModuleDef::Create<struct __st_##strModName>(#strModName)
+
+#define CreateModWithDocs(strModName, strModDocs)\
+	pyl::ModuleDef::Create<struct __st_#strModName>(strModName, strModDocs)
+
+#define AddFnToMod(M, F)\
+	M->RegisterFunction<struct __st_fn##F>(#F, pyl::make_function(F))
 
 #define AddMemFnToMod(M, C, F, R, ...)\
 	std::function<R(C *, ##__VA_ARGS__)> fn##F = &C::F;\
-	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, fn##F);
+	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, fn##F)
