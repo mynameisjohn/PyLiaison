@@ -7,46 +7,98 @@ using namespace std;
 
 #include "pylTestClasses.h"
 
-// Expose things to Python via the
-// PyLiaison module; see implementation
-// at bottom of file
-void ExposeFuncs();
+void Expose();	// Called prior to initializing interpreter
+void Test();	// Called after initializing interpreter
 
-const static std::string ModName = "PyLiaison";
+const static std::string g_strModName = "PyLiaison";
+
+int AddArgs( int a, int b )
+{
+	return a + b;
+}
+
+struct Foo
+{
+	int x{ 0 };
+	void Bar()
+	{
+		std::cout << "Calling Foo::Bar on Foo instance " << this << std::endl;
+	}
+	int SetX( int nX )
+	{
+		int oldX = x;
+		x = nX;
+		return oldX;
+	}
+};
+
+int main()
+{
+	pyl::ModuleDef * pFuncsModule = CreateModuleWithDocs( pylFuncs, "Functions exposed from C++" );
+
+	AddFnToMod( pFuncsModule, AddArgs );
+
+	AddClassToMod( pFuncsModule, Foo );
+	AddMemFnToMod( pFuncsModule, Foo, Bar, void );
+	AddMemFnToMod( pFuncsModule, Foo, SetX, int, int );
+
+	pyl::initialize();
+	pyl::RunCmd( "from pylFuncs import *" );
+	
+	int a1(1), a2(2), ret( -1 );
+	pyl::GetMainModule().call_function( "AddArgs", a1, a2 ).convert( ret );
+	std::cout << ret << " better be " << (a1 + a2) << std::endl;
+
+	Foo f;
+	pyl::GetMainModule().set_attr( "pFoo", &f );
+	pyl::RunCmd( "cFoo = Foo(pFoo)" );
+	pyl::Object pyFoo = pyl::GetMainModule().get_attr( "cFoo" );
+	pyFoo.call_function( "Bar" );
+	pyFoo.call_function( "SetX", ret );
+}
 
 int main()
 {
 	// Expose functions and class functions
-	ExposeFuncs();
+	Expose();
 
-	pyl::ModuleDef * constantsModule = pyl::ModuleDef::CreateModuleDef<struct constantModule>( "Constants", "Store constants here" );
+	// As an initial test, create a module called Constants storing some constant data
+	pyl::ModuleDef * pConstantsModule = CreateModuleWithDocs( pylConstants, "Store constants here" );
 
-	// All exposed functions should be exposed before this call
+	// When the module is imported, the (optional) function below is called with the
+	// module object itself as an argument and several attributes are declared.
+	// Attributes can be declared at any point after import, but this is a convenience. 
+	pConstantsModule->SetCustomModuleInit( [] ( pyl::Object obConstantsModule )
+	{
+		obConstantsModule.set_attr( "MAGIC", 42 );	
+		obConstantsModule.set_attr( "fPI", 3.14f );	
+	} );
+
+	// All exposed functions should be exposed before this call,
+	// which starts the python interpreter and allows variables to be exposed
 	pyl::initialize();
 
-	// Declare a float called fPI in the constants module
-	// with the value set below (can be done before or after import)
-	float fPI = 3.14f;
-	constantsModule->AsObject().set_attr( "fPI", fPI );
-
-	// Import our custom modules
-	pyl::RunCmd( "from " + ModName + " import *" );
-	pyl::RunCmd( "import Constants" );
+	// Import our constants module directly
+	pyl::RunCmd( "import pylConstants" );
 
 	// Doc test
-	pyl::RunCmd( "print(help(Constants))" );
+	pyl::RunCmd( "print(help(pylConstants))" );
 
-	// Test the float declared above. Note that this is differnent from
-	// exposing an object, there is a standalone float value inside this module
-	pyl::RunCmd( "print('This should be 3.14f: ', Constants.fPI)" );
+	// Test the two variables we've put into the module
+	pyl::RunCmd( "print('Does', pylConstants.MAGIC, '== 42?')" );
+	pyl::RunCmd( "print('Does', pylConstants.fPI, '== 3.14?')" );
 
-	// Declare an int in the constants module called MAGIC
-	// (we are proving that you can declare things after import)
-	int MAGIC = 42;
-	constantsModule->AsObject().set_attr( "MAGIC", MAGIC );
+	// Proof that variables can be exposed at any time
+	int testVal1( 2 );
+	pyl::GetMainModule().set_attr( "testVal", testVal1 );
+	pyl::RunCmd( "print('Does ', testVal, '== " + std::to_string( testVal1 ) + "?'" );
 
-	// Prove that the int was exposed
-	pyl::RunCmd( "print('The magic number 42 ==', Constants.MAGIC)" );
+	// We can get data back as well
+	int testVal2( 0 );
+	pyl::GetMainModule().get_attr( "testVal" ).convert( testVal2 );
+	std::cout << "And does " << testVal1 << " == " << testVal2 << "?" << std::endl;
+
+	return testVal1 == testVal2 ? 0 : -1;
 
 	// Call testArgs with 1 and 2
 	pyl::RunCmd( "print('1 + 2 =', testAddArgs(1,2))" );
@@ -62,7 +114,7 @@ int main()
 
 	// Expose the Foo instance fOne into the
 	// main module under the name g_Foo
-	pyl::ModuleDef * modH = pyl::ModuleDef::GetModuleDef( ModName );
+	pyl::ModuleDef * modH = pyl::ModuleDef::GetModuleDef( g_strModName );
 	pyl::Object modObj = modH->AsObject();
 	modH->Expose_Object( &fOne, "g_Foo" );
 
@@ -139,13 +191,13 @@ Vector3 testDataTransfer( Vector3 v )
 {
 	Vector3 nrm_v = v;
 	for ( int i = 0; i < 3; i++ )
-		nrm_v[i] /= v.len();
+		nrm_v[i] /= v.length();
 	return nrm_v;
 }
 
 
 // Test unpacking a PyTuple
-void testPyTup( pyl::Object obj )
+void testPyObj( pyl::Object obj )
 {
 	// If you make a mistake here it's on you
 	std::tuple<int, float, int> t;
@@ -154,45 +206,30 @@ void testPyTup( pyl::Object obj )
 }
 
 // Expose all Python Functions
-void ExposeFuncs()
+void Expose()
 {
-	pyl::ModuleDef * mod = pyl::ModuleDef::CreateModuleDef<struct MyMod>( ModName );
+	pyl::ModuleDef * mod = pyl::ModuleDef::Create<struct MyMod>( g_strModName );
 
 	// add testArgs(x, y): to the PyLiaison module
-//	Py_Add_Func("testArgs", testArgs, "test adding two args");
-	mod->RegisterFunction<struct testAddArgsT>( "testAddArgs",
-												pyl::make_function( testAddArgs ), "test passing args" );
+	AddFnToMod( mod, testAddArgs, int, int, int );
 
 	// add testOverload(v): to the PyLiaison module
-	//Py_Add_Func("testOverload", pyl::make_function(testArgs), "where do I have to implement it?");
-	mod->RegisterFunction<struct testDataTransferT>( "testOverload",
-													 pyl::make_function( testDataTransfer ), "test overloading a PyObject * conversion" );
+	AddFnToMod( mod, testDataTransfer, Vector3, Vector3 );
 
-	mod->RegisterFunction<struct testPyTupT>( "testPyTup",
-											  pyl::make_function( testPyTup ), "test passing something the host converts" );
+	// Expose a function that takes a python object for us to deal with
+	AddFnToMod( mod, testPyObj, void, pyl::Object );
 
 	// Register the Foo class
 	mod->RegisterClass<Foo>( "Foo" );
 
 	// Register member functions of Foo
-	std::function<Vector3( Foo * )> Foo_getVec( &Foo::getVec );
-	mod->RegisterMemFunction<Foo, struct Foo_getVecT>( "getVec", Foo_getVec,
-													   "Get the m_Vec3 member of a Foo instance" );
-
-	std::function<void( Foo *, Vector3 )> Foo_setVec( &Foo::setVec );
-	mod->RegisterMemFunction<Foo, struct Foo_setVecT>( "setVec", Foo_setVec,
-													   "Set the m_Vec3 member of a Foo instance with a list" );
-
-	std::function<void( Foo * )> Foo_nrmVec( &Foo::normalizeVec );
-	mod->RegisterMemFunction<Foo, struct Foo_nrmVecT>( "normalizeVec", Foo_nrmVec,
-													   "normalize the m_Vec3 member of a Foo instance" );
+	AddMemFnToMod( mod, Foo, getVec, Vector3 );
+	AddMemFnToMod( mod, Foo, setVec, void, Vector3 );
+	AddMemFnToMod( mod, Foo, normalizeVec, void );
 
 	// Expose one function of Vector3, just to prove it's possible
 	mod->RegisterClass<Vector3>( "Vector3" );
-
-	std::function<float( Vector3 * )> Vec3_len( &Vector3::len ); // len is a keyword
-	mod->RegisterMemFunction<Vector3, struct Vec3_lenT_>( "length()", Vec3_len,
-														  "get the length, or magnitude, of the vector" );
+	AddMemFnToMod( mod, Vector3, length, float );
 }
 
 // Implementation of conversion/allocation functions

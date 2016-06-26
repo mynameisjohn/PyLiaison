@@ -30,23 +30,22 @@
 namespace pyl
 {
 	// Every python module function looks like this
-	using PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
+	using _PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
 
 	// Deleter that calls Py_XDECREF on the PyObject parameter.
-	struct PyObjectDeleter {
+	struct _PyObjectDeleter {
 		void operator()(PyObject *obj) {
 			Py_XDECREF(obj);
 		}
 	};
 	// unique_ptr that uses Py_XDECREF as the destructor function.
-	using pyunique_ptr = std::unique_ptr<PyObject, PyObjectDeleter> ;
+	using pyunique_ptr = std::unique_ptr<PyObject, _PyObjectDeleter> ;
 
-	// All exposed objects inherit from this python type, which has a capsule
-	// member holding a pointer to the original object
-	struct GenericPyClass
+	// Inherit from std::runtime_error... felt like the right thing to do
+	class runtime_error : public std::runtime_error
 	{
-        PyObject_HEAD
-		PyObject * capsule{ nullptr };
+	public:
+		runtime_error( const char * message ) : std::runtime_error( message ) {}
 	};
 
 	// Several python APIs require a null terminated array of data
@@ -54,77 +53,120 @@ namespace pyl
 	// Because this uses a std::vector under the hood inserting will move things in memory,
 	// which is why it's important not to modify any of these structs after they've been 
 	// expsoed to the python interpreter
-	template <typename D>
-	struct _NullTermBuf
-	{
-		std::vector<D> v_Data;
-		D * Ptr() { return v_Data.data(); }
-		_NullTermBuf() :v_Data( 1, { 0 } ) {}
-	protected:
-		// Insert elements before the last (null) element
-		void _insert(D data) { v_Data.insert(v_Data.end() - 1, data); }
-	};
+	//template <typename D>
+	//struct _NullTermBuf
+	//{
+	//	std::vector<D> v_Data;
+	//	D * Ptr() { return v_Data.data(); }
+	//	_NullTermBuf() :v_Data( 1, { 0 } ) {}
+	//protected:
+	//	// Insert elements before the last (null) element
+	//	void _insert(D data) { v_Data.insert(v_Data.end() - 1, data); }
+	//};
 
-	// Null terminated method defs
-	struct MethodDefinitions : public _NullTermBuf<PyMethodDef>
-	{
-		// Just use the base
-		MethodDefinitions() : _NullTermBuf() {}
-		
-		// These containers don't invalidate references
-		std::list<std::string> MethodNames, MethodDocs;
+	//// Null terminated method defs
+	//struct MethodDefinitions
+	//{
+	//	std::basic_string<PyMethodDef> m_ntBuf;
 
-		// Add method definitions before the null terminator
-		void AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
-	};
+	//	// These containers don't invalidate references
+	//	std::list<std::string> MethodNames, MethodDocs;
 
-	// Null terminated member defs
-	struct MemberDefinitions : public _NullTermBuf<PyMemberDef>
-	{
-		// These containers don't invalidate references
-		std::list<std::string> MemberNames, MemberDocs;
+	//	// Add method definitions before the null terminator
+	//	void AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
+	//};
 
-		// Use base
-		MemberDefinitions();// : NullTermBuf() {}
+	//// Null terminated member defs
+	//struct MemberDefinitions
+	//{
+	//	std::basic_string<PyMemberDef> m_ntBuf;
 
-		// Add method definitions before the null terminator
-		void AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
-	};
+	//	// These containers don't invalidate references
+	//	std::list<std::string> MemberNames, MemberDocs;
+
+	//	// Use base
+	//	MemberDefinitions();// : NullTermBuf() {}
+
+	//	// Add method definitions before the null terminator
+	//	void AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
+	//};
 
 	// Defines an exposed class (which is not per instance)
 	// as well as a list of exposed instances
-	struct ExposedClass
+	using _MethodDefs = std::basic_string<PyMethodDef>;
+	using _MemberDefs = std::basic_string<PyMemberDef>;
+	class _ExposedClassDef
 	{
-		// The name of the python class
-		std::string PyClassName;
-        
-		// Each exposed class has a method definition
-		MethodDefinitions m_MethodDef;
-		
-        // And members
-		MemberDefinitions m_MemberDef;
+	private:
+		std::string m_strClassName;
+		_MethodDefs m_ntMethodDefs;
+		std::set<std::string> m_setUsedMethodNames;
+		std::list<std::string> m_liMethodDocs;
 
-		// The Python type object
+		_MemberDefs m_ntMemberDefs;
+		std::set<std::string> m_setUsedMemberNames;
+		std::list<std::string> m_liMemberDocs;
+		
 		PyTypeObject m_TypeObject;
 
-		// Lock down pointers
+	public:
+		bool AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs = "" );
+		bool AddMember( std::string strMemberName, int type, int offset, int flags, std::string doc = "" );
+		
 		void Prepare();
+		bool IsPrepared() const;
 
-		// Ref to type object
-		PyTypeObject& to() { return m_TypeObject; }
+		PyTypeObject * GetTypeObject() const;
+		const char * GetName() const;
+		void SetName( std::string strName );
 
-		// Add method definitions before the null terminator
-		void AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
-			m_MethodDef.AddMethod(name, fnPtr, flags, docs);
-		}
-        
-        // Add member definitions (which isn't really a thing we want to do...)
-		void AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
-			m_MemberDef.AddMember(name, type, offset, flags, doc);
-		}
+		_ExposedClassDef();
+		_ExposedClassDef( std::string strClassName );
+		_ExposedClassDef( const _ExposedClassDef& other ) = default;
 
-        // Default constructor
-        ExposedClass(std::string n = "unnamed");
+		_ExposedClassDef& operator=( const _ExposedClassDef& other ) = default;
+
+		static int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwargs );
+		static PyObject * PyClsCallFunc( PyObject * co, PyObject * args, PyObject * kwargs );
+
+		// All exposed objects inherit from this python type, which has a capsule
+		// member holding a pointer to the original object
+		struct _GenericPyClass
+		{
+			PyObject_HEAD
+				PyObject * capsule{ nullptr };
+		};
+
+		//// The name of the python class
+		//std::string PyClassName;
+  //      
+		//// Each exposed class has a method definition
+		//MethodDefinitions m_MethodDef;
+		//
+  //      // And members
+		//MemberDefinitions m_MemberDef;
+
+		//// The Python type object
+		//PyTypeObject m_TypeObject;
+
+		//// Lock down pointers
+		//void Prepare();
+
+		//// Ref to type object
+		//PyTypeObject& to() { return m_TypeObject; }
+
+		//// Add method definitions before the null terminator
+		//void AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
+		//	m_MethodDef.AddMethod(name, fnPtr, flags, docs);
+		//}
+  //      
+  //      // Add member definitions (which isn't really a thing we want to do...)
+		//void AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
+		//	m_MemberDef.AddMember(name, type, offset, flags, doc);
+		//}
+
+  //      // Default constructor
+  //      ExposedClass(std::string n = "unnamed");
 	};
 
 	// TODO more doxygen!
@@ -169,8 +211,11 @@ namespace pyl
 			add_tuple_vars(tup, args...);
 			// Call our object
 			PyObject *ret(PyObject_CallObject(func.get(), tup.get()));
-			if (!ret)
-				throw std::runtime_error("Failed to call function " + name);
+			if ( !ret )
+			{
+				PyErr_Print();
+				throw std::runtime_error( "Failed to call function " + name );
+			}
 			return{ ret };
 		}
 
@@ -238,6 +283,8 @@ namespace pyl
 		* \return Object representing the loaded script.
 		*/
 		static Object from_script(const std::string &script_path);
+
+		void Reset();
 
 	protected:
 		typedef std::shared_ptr<PyObject> pyshared_ptr;

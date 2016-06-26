@@ -148,7 +148,8 @@ namespace pyl
         if (len > N) len = N;
         for (Py_ssize_t i(0); i < len; ++i) {
             T& val = arr[i];
-            if (!convert(PyList_GetItem(obj, i), val))
+			PyObject * pItem = PyList_GetItem( obj, i );
+            if (!convert(pItem, val))
                 return false;
         }
         return true;

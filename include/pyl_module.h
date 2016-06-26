@@ -23,9 +23,12 @@
 #include <typeindex>
 #include <string>
 #include <map>
+#include <set>
+#include <list>
 
 #include "pyl_funcs.h"
 #include "pyl_classes.h"
+#include "pyl_misc.h"
 
 namespace pyl
 {
@@ -53,48 +56,19 @@ namespace pyl
 		ModuleDef( const std::string& moduleName, const std::string& moduleDocs );
 
 		// Private members
-	private:
-		std::map<std::type_index, ExposedClass> m_mapExposedClasses;	/*!< A map of exposable C++ class types */
-		std::list<PyFunc> m_liExposedFunctions;							/*!< A list of exposed c++ functions */
-		MethodDefinitions m_vMethodDef;									/*!< A null terminated MethodDef buffer */
+
+		std::map<std::type_index, _ExposedClassDef> m_mapExposedClasses;	/*!< A map of exposable C++ class types */
+		std::list<_PyFunc> m_liExposedFunctions;							/*!< A list of exposed c++ functions */
+		
+		_MethodDefs m_ntMethodDefs;									/*!< A null terminated MethodDef buffer */
+		std::list<std::string> m_liMethodDocs;
+		std::set<std::string> m_setUsedMethodNames;
+
 		PyModuleDef m_pyModDef;											/*!< The actual Python module def */
 		std::string m_strModDocs;										/*!< The string containing module docs */
 		std::string m_strModName;										/*!< The string containing the module name */
 		std::function<PyObject *()> m_fnModInit;						/*!< Function called on import that creates the module*/
-
-	// These are internal functions used by the expose APIs that create functions
-	private:
-		// Add a new method def fo the Method Definitions of the module
-		template <typename tag>
-		void addFunction( const PyFunc pFn, const std::string methodName, const int methodFlags, const std::string docs )
-		{
-			// We need to store these where they won't move
-			m_liExposedFunctions.push_back( pFn );
-
-			// now make the function pointer (TODO figure out these ids, or do something else)
-			PyCFunction fnPtr = get_fn_ptr<tag>( m_liExposedFunctions.back() );
-
-			// You can key the methodName string to a std::function
-			m_vMethodDef.AddMethod( methodName, fnPtr, methodFlags, docs );
-		}
-
-		// Like the above but for member functions of exposed C++ clases
-		template <typename tag, class C>
-		void addMemFunction( const std::string methodName, const PyFunc pFn, const int methodFlags, const std::string docs )
-		{
-			auto it = m_mapExposedClasses.find( typeid(C) );
-			if ( it == m_mapExposedClasses.end() )
-				return;
-
-			// We need to store these where they won't move
-			m_liExposedFunctions.push_back( pFn );
-
-			// now make the function pointer (TODO figure out these ids, or do something else)
-			PyCFunction fnPtr = get_fn_ptr<tag>( m_liExposedFunctions.back() );
-
-			// Add function
-			it->second.AddMemberFn( methodName, fnPtr, methodFlags, docs );
-		}
+		std::function<void( Object )> m_fnCustomInit;
 
 		// Sets up m_fnModInit
 		void createFnObject();
@@ -103,7 +77,11 @@ namespace pyl
 		int exposeObject_impl( const std::type_index T, voidptr_t instance, const std::string& name, PyObject * mod );
 
 		// Implementation of RegisterClass that doesn't need to be in this header file
-		void registerClass_impl( const std::type_index T, const  std::string& className );
+		bool registerClass_impl( const std::type_index T, const  std::string& strClassName );
+		bool registerClass_impl( const std::type_index T, const std::type_index P, const std::string& strClassName, const ModuleDef * const pParentMod );
+
+		// Adds a method to the null terminated method def buf
+		bool addMethod_impl( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs );
 
 		// Calls the prepare function on all of our exposed classes
 		void prepareClasses();
@@ -113,6 +91,46 @@ namespace pyl
 		// Doing it any other way, or doing it in such a way that the char * will not remain valid, will prevent your module from 
 		// being imported (which is why they're stored in a map, where references are not invalidated.) 
 		const char * getNameBuf() const;
+
+		// Add a new method def fo the Method Definitions of the module
+		template <typename tag>
+		bool addFunction( const _PyFunc pFn, const std::string methodName, const int methodFlags, const std::string docs )
+		{
+			// We need to store these where they won't move
+			m_liExposedFunctions.push_back( pFn );
+
+			// now make the function pointer (TODO figure out these ids, or do something else)
+			PyCFunction fnPtr = get_fn_ptr<tag>( m_liExposedFunctions.back() );
+
+			// You can key the methodName string to a std::function
+			if ( addMethod_impl( methodName, fnPtr, methodFlags, docs ) )
+				return true;
+
+			m_liExposedFunctions.pop_back();
+			return false;
+		}
+
+		// Like the above but for member functions of exposed C++ clases
+		template <typename tag, class C>
+		bool addMemFunction( const std::string methodName, const _PyFunc pFn, const int methodFlags, const std::string docs )
+		{
+			auto it = m_mapExposedClasses.find( typeid(C) );
+			if ( it == m_mapExposedClasses.end() )
+				return false;
+
+			// We need to store these where they won't move
+			m_liExposedFunctions.push_back( pFn );
+
+			// now make the function pointer (TODO figure out these ids, or do something else)
+			PyCFunction fnPtr = get_fn_ptr<tag>( m_liExposedFunctions.back() );
+
+			// Add function
+			if ( it->second.AddMethod( methodName, fnPtr, methodFlags, docs ) )
+				return true;
+
+			m_liExposedFunctions.pop_back();
+			return false;
+		}
 
 		// The public expose APIs
 	public:
@@ -136,11 +154,11 @@ namespace pyl
 		R returnedVal = methodName(Args...);
 		*/
 		template <typename tag, typename R, typename ... Args>
-		void RegisterFunction( std::string methodName, std::function<R( Args... )> fn, std::string docs = "" )
+		bool RegisterFunction( std::string methodName, std::function<R( Args... )> fn, std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Case1( fn );
+			_PyFunc pFn = _getPyFunc_Case1( fn );
 
-			addFunction<tag>( pFn, methodName, METH_VARARGS, docs );
+			return addFunction<tag>( pFn, methodName, METH_VARARGS, docs );
 		}
 
 		/*! RegisterFunction
@@ -157,11 +175,11 @@ namespace pyl
 		methodName(Args...);
 		*/
 		template <typename tag, typename ... Args>
-		void RegisterFunction( const std::string methodName, const std::function<void( Args... )> fn, const std::string docs = "" )
+		bool RegisterFunction( const std::string methodName, const std::function<void( Args... )> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Case2( fn );
+			_PyFunc pFn = _getPyFunc_Case2( fn );
 
-			addFunction<tag>( pFn, methodName, METH_VARARGS, docs );
+			return addFunction<tag>( pFn, methodName, METH_VARARGS, docs );
 		}
 
 		/*! RegisterFunction
@@ -178,11 +196,11 @@ namespace pyl
 		R returnedVal = methodName();
 		*/
 		template <typename tag, typename R>
-		void RegisterFunction( std::string methodName, const std::function<R()> fn, const std::string docs = "" )
+		bool RegisterFunction( std::string methodName, const std::function<R()> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Case3( fn );
+			_PyFunc pFn = _getPyFunc_Case3( fn );
 
-			addFunction<tag>( pFn, methodName, METH_NOARGS, docs );
+			return addFunction<tag>( pFn, methodName, METH_NOARGS, docs );
 		}
 
 		/*! RegisterFunction
@@ -198,11 +216,11 @@ namespace pyl
 		methodName();
 		*/
 		template <typename tag>
-		void RegisterFunction( const std::string methodName, const std::function<void()> fn, const std::string docs = "" )
+		bool RegisterFunction( const std::string methodName, const std::function<void()> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Case4( fn );
+			_PyFunc pFn = _getPyFunc_Case4( fn );
 
-			addFunction<tag>( pFn, methodName, METH_NOARGS, docs );
+			return addFunction<tag>( pFn, methodName, METH_NOARGS, docs );
 		}
 
 
@@ -229,10 +247,10 @@ namespace pyl
 		*/
 		template <typename C, typename tag, typename R, typename ... Args,
 			typename std::enable_if<sizeof...(Args) != 1, int>::type = 0>
-			void RegisterMemFunction( const std::string methodName, const std::function<R( Args... )> fn, const std::string docs = "" )
+		bool RegisterMemFunction( const std::string methodName, const std::function<R( Args... )> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Mem_Case1<C>( fn );
-			addMemFunction<tag, C>( methodName, pFn, METH_VARARGS, docs );
+			_PyFunc pFn = _getPyFunc_Mem_Case1<C>( fn );
+			return addMemFunction<tag, C>( methodName, pFn, METH_VARARGS, docs );
 		}
 
 		/*! RegisterMemFunction
@@ -252,10 +270,10 @@ namespace pyl
 		c.methodName(Args...);
 		*/
 		template <typename C, typename tag, typename ... Args>
-		void RegisterMemFunction( const std::string methodName, std::function<void( Args... )> fn, const std::string docs = "" )
+		bool RegisterMemFunction( const std::string methodName, std::function<void( Args... )> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Mem_Case2<C>( fn );
-			addMemFunction<tag, C>( methodName, pFn, METH_VARARGS, docs );
+			_PyFunc pFn = _getPyFunc_Mem_Case2<C>( fn );
+			return addMemFunction<tag, C>( methodName, pFn, METH_VARARGS, docs );
 		}
 
 		/*! RegisterMemFunction
@@ -275,10 +293,10 @@ namespace pyl
 		R returnedVal = c.methodName();
 		*/
 		template <typename C, typename tag, typename R>
-		void RegisterMemFunction( const std::string methodName, std::function<R( C * )> fn, const std::string docs = "" )
+		bool RegisterMemFunction( const std::string methodName, std::function<R( C * )> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Mem_Case3<C>( fn );
-			addMemFunction<tag, C>( methodName, pFn, METH_NOARGS, docs );
+			_PyFunc pFn = _getPyFunc_Mem_Case3<C>( fn );
+			return addMemFunction<tag, C>( methodName, pFn, METH_NOARGS, docs );
 		}
 
 		/*! RegisterMemFunction
@@ -297,10 +315,10 @@ namespace pyl
 		c.methodName();
 		*/
 		template <typename C, typename tag>
-		void RegisterMemFunction( const std::string methodName, const std::function<void( C * )> fn, const std::string docs = "" )
+		bool RegisterMemFunction( const std::string methodName, const std::function<void( C * )> fn, const std::string docs = "" )
 		{
-			PyFunc pFn = __getPyFunc_Mem_Case4<C>( fn );
-			addMemFunction<tag, C>( methodName, pFn, METH_NOARGS, docs );
+			_PyFunc pFn = _getPyFunc_Mem_Case4<C>( fn );
+			return addMemFunction<tag, C>( methodName, pFn, METH_NOARGS, docs );
 		}
 
 
@@ -319,9 +337,15 @@ namespace pyl
 		Because it modifies the module it must be called prior to import. 
 		*/
 		template <class C>
-		void RegisterClass( std::string className )
+		bool RegisterClass( std::string className )
 		{
-			registerClass_impl( typeid(C), className );
+			return registerClass_impl( typeid(C), className );
+		}
+
+		template <class C, class P>
+		bool RegisterClass( std::string className, const ModuleDef * const pParentClassMod )
+		{
+			return registerClass_impl( typeid(C), typeid(P), className, pParentClassMod );
 		}
 
 
@@ -343,7 +367,7 @@ namespace pyl
 		made by this instance
 		*/
 		template <class C>
-		int Expose_Object( C * instance, const std::string& name, PyObject * mod = nullptr )
+		int Expose_Object( C * instance, const std::string name, PyObject * mod = nullptr )
 		{
 			// Make sure it's a valid pointer
 			if ( !instance )
@@ -358,6 +382,17 @@ namespace pyl
 		// Innocent functions
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! GetModuleDef
+		\brief Retreive a pointer to an existing pyl::Module definition
+
+		\param[in] moduleName The name of the module you'd like to retreive
+		\param[out] pModule A pointer to the module you've requested, returns nullptr if not found	
+
+		Use this function to get a pointer to a previously created module definition. If you plan on 
+		modifying the definition you must do it prior to initializing the interpreter
+		*/
+		static ModuleDef * GetModuleDef( const std::string moduleName );
+
 		/*! CreateModule
 		\brief Create a new pyl::Module object
 
@@ -370,8 +405,11 @@ namespace pyl
 		then that will be available to the interpreter via the __help__ function (?)
 		*/
 		template <typename tag>
-		static ModuleDef * CreateModuleDef( const std::string moduleName, const std::string moduleDocs = "" )
+		static ModuleDef * Create( const std::string moduleName, const std::string moduleDocs = "" )
 		{
+			if ( ModuleDef * pExistingDef = GetModuleDef( moduleName ) )
+				return pExistingDef;
+
 			// Add to map
 			ModuleDef& mod = s_mapPyModules[moduleName] = ModuleDef( moduleName, moduleDocs );
 
@@ -384,17 +422,6 @@ namespace pyl
 			return &mod;
 		}
 
-		/*! GetModule
-		\brief Retreive a pointer to an existing pyl::Module definition
-
-		\param[in] moduleName The name of the module you'd like to retreive
-		\param[out] pModule A pointer to the module you've requested, returns nullptr if not found	
-
-		Use this function to get a pointer to a previously created module definition. If you plan on 
-		modifying the definition you must do it prior to initializing the interpreter
-		*/
-		static ModuleDef * GetModuleDef( const std::string moduleName );
-		
 		/*! AsObject
 		\brief Get the Python module as a pyl::Object
 		
@@ -417,7 +444,22 @@ namespace pyl
 		*/
 		static int InitAllModules();
 
+		void SetCustomModuleInit( std::function<void( Object )> fnInit );
+
 		// Don't ever call this... it isn't even implemented, but some STL containers demand that it exists
 		ModuleDef();
 	};
+
+	Object GetMainModule();
+	Object GetModule( std::string modName );
 }
+
+#define S1(x) #x
+#define S2(x) S1(x)
+
+#define AddFnToMod(F, R, M, ...)\
+	M->RegisterFunction<struct __st_fn##F>(#F, pyl::make_function(F));
+
+#define AddMemFnToMod(M, C, F, R, ...)\
+	std::function<R(C *, ##__VA_ARGS__)> fn##F = &C::F;\
+	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, fn##F);

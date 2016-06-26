@@ -21,6 +21,7 @@
 #pragma once
 
 #include <Python.h>
+#include <functional>
 
 #include "pyl_classes.h"
 
@@ -28,10 +29,10 @@ namespace pyl
 {
 	// Pretty ridiculous
 	template <typename C>
-	static C * __getCapsulePtr(PyObject * obj)
+	static C * _getCapsulePtr(PyObject * obj)
 	{
 		assert(obj);
-		auto gpcPtr = static_cast<GenericPyClass *>((voidptr_t)obj);
+		auto gpcPtr = static_cast<_ExposedClassDef::_GenericPyClass *>((voidptr_t)obj);
 		assert(gpcPtr);
 		PyObject * capsule = gpcPtr->capsule;
 		assert(PyCapsule_CheckExact(capsule));
@@ -40,8 +41,8 @@ namespace pyl
 
 
 	template <typename R, typename ... Args>
-	PyFunc __getPyFunc_Case1(std::function<R(Args...)> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+	_PyFunc _getPyFunc_Case1(std::function<R(Args...)> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			std::tuple<Args...> tup;
 			convert(a, tup);
@@ -53,8 +54,8 @@ namespace pyl
 	}
 
 	template <typename ... Args>
-	PyFunc __getPyFunc_Case2(std::function<void(Args...)> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+	_PyFunc _getPyFunc_Case2(std::function<void(Args...)> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			std::tuple<Args...> tup;
 			convert(a, tup);
@@ -67,8 +68,8 @@ namespace pyl
 	}
 
 	template <typename R>
-	PyFunc __getPyFunc_Case3(std::function<R()> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a)
+	_PyFunc _getPyFunc_Case3(std::function<R()> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a)
 		{
 			R rVal = fn();
 			return alloc_pyobject(rVal);
@@ -76,15 +77,15 @@ namespace pyl
 		return pFn;
 	}
 
-	PyFunc __getPyFunc_Case4(std::function<void()> fn);
+	_PyFunc _getPyFunc_Case4(std::function<void()> fn);
 
 
 	template <typename C, typename R, typename ... Args>
-	PyFunc __getPyFunc_Mem_Case1(std::function<R(Args...)> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+	_PyFunc _getPyFunc_Mem_Case1(std::function<R(Args...)> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
-			std::get<0>(tup) = __getCapsulePtr<C>(s);
+			std::get<0>(tup) = _getCapsulePtr<C>(s);
 
 			// recurse till the first element, getting args from a
 			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
@@ -99,11 +100,11 @@ namespace pyl
 	}
 
 	template <typename C, typename ... Args>
-	PyFunc __getPyFunc_Mem_Case2(std::function<void(Args...)> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+	_PyFunc _getPyFunc_Mem_Case2(std::function<void(Args...)> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// the first arg is the instance pointer, contained in s
 			std::tuple<Args...> tup;
-			std::get<0>(tup) = __getCapsulePtr<C>(s);
+			std::get<0>(tup) = _getCapsulePtr<C>(s);
 
 			// recurse till the first element, getting args from a
 			add_to_tuple<sizeof...(Args)-1, 1, Args...>(a, tup);
@@ -119,10 +120,10 @@ namespace pyl
 	}
 
 	template <typename C, typename R>
-	PyFunc __getPyFunc_Mem_Case3(std::function<R(C *)> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+	_PyFunc _getPyFunc_Mem_Case3(std::function<R(C *)> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// Nothing special here
-			R rVal = fn(__getCapsulePtr<C>(s));
+			R rVal = fn(_getCapsulePtr<C>(s));
 
 			return alloc_pyobject(rVal);
 		};
@@ -130,10 +131,10 @@ namespace pyl
 	}
 
 	template<typename C>
-	PyFunc __getPyFunc_Mem_Case4(std::function<void(C *)> fn) {
-		PyFunc pFn = [fn](PyObject * s, PyObject * a) {
+	_PyFunc _getPyFunc_Mem_Case4(std::function<void(C *)> fn) {
+		_PyFunc pFn = [fn](PyObject * s, PyObject * a) {
 			// Nothing special here
-			fn(__getCapsulePtr<C>(s));
+			fn(_getCapsulePtr<C>(s));
 
 			Py_INCREF(Py_None);
 			return Py_None;

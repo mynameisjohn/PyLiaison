@@ -4,7 +4,7 @@
 
 // This function converts a class between
 // its C++ and Python representations
-Vector3 testDataTransfer( Vector3 v );
+//Vector3 testDataTransfer( Vector3 v );
 
 // You can pass one of these back and forth
 // between the interpreter and host program
@@ -16,7 +16,7 @@ struct Vector3
 	float z{ 0 };
 
 	// Vector length
-	float len()
+	float length()
 	{
 		return sqrt( x*x + y*y + z*z );
 	}
