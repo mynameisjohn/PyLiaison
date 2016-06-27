@@ -153,6 +153,7 @@ AddMemFnTomod(pBarMod, getX, int);
 
 // Now I can use the module definition to declare
 // wrapper variable to a Bar instance named cppBar
+// (exposed into the main module by default)
 Bar B;
 pBarMod->Expose_Object("cppBar", B);
 ```
