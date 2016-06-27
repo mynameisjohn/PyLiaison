@@ -2,7 +2,9 @@
 
 A library that easily allows users to embed python interpreters in C++ applications and facilitates data transfer to and from the interpreter.
 
-`pyl::RunCmd( "print('Hello from Python!')" );`
+```C++
+pyl::RunCmd( "print('Hello from Python!')" );
+```
 
 ## Purpose
 
@@ -14,80 +16,88 @@ Data can also be passed to and from the interpreter freely, and custom overloads
 
 Here is a simple example that shows how you can communicate with the interpreter. The interpreter is initalized, and the main module is retrieved as a pyl::Object (a shared ptr type meant to mimic mutable python types.) 
 
-    // Initialize the python interpreter
-    pyl::initialize();
+```C++
+// Initialize the python interpreter
+pyl::initialize();
 
-    // Get the main module, which is stored as python object
-    pyl::Object obMain = pyl::GetMainModule()
+// Get the main module, which is stored as python object
+pyl::Object obMain = pyl::GetMainModule()
 
-The attributes of an object can be accessed freely via templated set and get functions.
+// The attributes of an object can be accessed freely via templated set and get functions.
 
-    // Create a object in the module (an int named iVal)
-    int iVal( 12345 );
-    obMain.set_attr( "iVal", iVal );
+// Create a object in the module (an int named iVal)
+int iVal( 12345 );
+obMain.set_attr( "iVal", iVal );
 
-    // Negate the value in python
-    pyl::RunCmd( "iVal = -iVal" );
+// Negate the value in python
+pyl::RunCmd( "iVal = -iVal" );
 
-    // Get the value and convert it to an int
-    int iNegVal( 0 );
-    obMain.get_attr( "iVal", iNegVal'
+// Get the value and convert it to an int
+int iNegVal( 0 );
+obMain.get_attr( "iVal", iNegVal'
 
-Finalizing the interpreter
+// Shut down the interpreter
+pyl::finalize();
+```
 
-    // Shut down the interpreter
-    pyl::finalize();
-    
 ### Modules
 
 Custom modules can be declared in C++. The modules can contain interfaces to functions, class definitions, and member functions that can be imported by the interpreter.
 
-    // We'll declare this function in a custom module
-    double mycos( double d ) {
-        return cos( d );
-    }
+```C++
+// We'll declare this function in a custom module
+double mycos( double d ) {
+    return cos( d );
+}
 
-    // Define a module named pylFuncs
-    pyl::ModuleDef * pModDef = CreateMod( pylFuncs );
+// Define a module named pylFuncs
+pyl::ModuleDef * pModDef = CreateMod( pylFuncs );
 
-    // Add the Mycos function to the module
-    AddFnToMod( pModDef, mycos );
+// Add the Mycos function to the module
+AddFnToMod( pModDef, mycos );
 
-    // Initialize the interpreter
-    pyl::initialize();
+// Initialize the interpreter
+pyl::initialize();
 
-    //Import our module and invoke the function
-    pyl::RunCmd( "import pylFuncs" );
-    pyl::RunCmd( "print('The cosine of 0 is', pylFuncs.Mycos(0.))" );
-    
+//Import our module and invoke the function
+pyl::RunCmd( "import pylFuncs" );
+pyl::RunCmd( "print('The cosine of 0 is', pylFuncs.Mycos(0.))" );
+```
+
 Like real python modules, custom modules can be wrapped by a pyl::Object and manipulated like anything else. 
 
-    // Get the os.path module as an pyl::Object, which is backed by a shared_ptr 
-    pyl::RunCmd( "from os import path" );
-    pyl::Object obPathMod = pyl::GetMainModule().get_attr( "path" );
+```C++
+// Get the os.path module as an pyl::Object, which is backed by a shared_ptr 
+pyl::RunCmd( "from os import path" );
+pyl::Object obPathMod = pyl::GetMainModule().get_attr( "path" );
 
-    // Invoke the abspath function on the current file, store value
-    std::string filePath;
-    obPathMod.call("abspath", __FILE__).convert(filePath);
-    
+// Invoke the abspath function on the current file, store value
+std::string filePath;
+obPathMod.call("abspath", __FILE__).convert(filePath);
+```
+
 ### Functions and Scripts
 Suppose I write a script (in a file named script.py) with a function that delimits strings, returning the individual strings in a list:
 
-    # script.py
-    def delimit(str, d):
-        return str.split(d)
+```python
+# script.py
+def delimit(str, d):
+    return str.split(d)
+```
     
 Scripts can be loaded into pyl::Objects. Any object with a callable variable can be accessed by using a pyl::Object's call function. 
 
-    // Load the script from disk into a pyl::Object
-    pyl::Object obScript = pyl::Object::from_script("script.py");
+```C++
+// Load the script from disk into a pyl::Object
+pyl::Object obScript = pyl::Object::from_script("script.py");
 
-    // We'll turn this sentence into a vector of words
-    std::string sentence = "My name is john";
-    std::vector<std::string> vWords;
+// We'll turn this sentence into a vector of words
+std::string sentence = "My name is john";
+std::vector<std::string> vWords;
 
-    // Call the function, convert the return value into a vector of strings
-    obScript.call("delimit", sentence, " ").convert(vWords);
+// Call the function, convert the return value into a vector of strings
+obScript.call("delimit", sentence, " ").convert(vWords);
+```
 
 ### Objects and Classes
     
@@ -95,66 +105,77 @@ A pyl::Object is meant to behave similarly to a PyObject, which is the general p
 
 If I were to declare a Foo instance f in this script, I could store it in C++ inside a pyl::Object
 
-    # Foo.py
-    class Foo:
-        def __init__(self):
-            pass
-            
-        def doSomething(self):
-            print('Something')
-            
-    f = Foo()
+```python
+# Foo.py
+class Foo:
+    def __init__(self):
+        pass
+        
+    def doSomething(self):
+        print('Something')
+        
+f = Foo()
+```
 
 The object can be stored as a C++ variable or declared into another pyl::Object. 
 
-    // Get the object from the script and store it in a pyl::Object
-    pyl::Object obFooInst = pyl::Object::from_script("Foo.py").get_attr("f");
+```C++
+// Get the object from the script and store it in a pyl::Object
+pyl::Object obFooInst = pyl::Object::from_script("Foo.py").get_attr("f");
 
-    // Invoke a member function using the instance
-    obFooInst.call("doSomething");
+// Invoke a member function using the instance
+obFooInst.call("doSomething");
 
-    // Declare a reference to the original object in the main module
-    pyl::GetMainModule().set_attr("f", obFooInst);
-    
+// Declare a reference to the original object in the main module
+pyl::GetMainModule().set_attr("f", obFooInst);
+```
+
 Instances of C++ structs and classes can also be exposed into the interpreter by reference.
 The definitions of the object are stored in a custom module like so:
 
-    // The C++ Bar class definition
-    class Bar{
-        int x;
-    public:
-        Bar() : x(0) {}
-        void setX(int x) { this->x = x);
-        int getX() return { x);
-    };
+```C++
+// The C++ Bar class definition
+class Bar{
+    int x;
+public:
+    Bar() : x(0) {}
+    void setX(int x) { this->x = x);
+    int getX() return { x);
+};
 
-    // Create a pyl module
-    pyl::ModuleDef * pBarMod = CreateMod( pylBar );
+// Create a pyl module
+pyl::ModuleDef * pBarMod = CreateMod( pylBar );
 
-    // Add the class definiiton and member functions
-    AddClassDefToMod(pBarMod, Bar);
-    AddMemFnTomod(pBarMod, setX, void, int);
-    AddMemFnTomod(pBarMod, getX, int);
+// Add the class definiiton and member functions
+AddClassDefToMod(pBarMod, Bar);
+AddMemFnTomod(pBarMod, setX, void, int);
+AddMemFnTomod(pBarMod, getX, int);
 
-    // Now I can use the module definition to declare
-    // wrapper variable to a Bar instance named cppBar
-    Bar B;
-    pBarMod->Expose_Object("cppBar", B);
+// Now I can use the module definition to declare
+// wrapper variable to a Bar instance named cppBar
+Bar B;
+pBarMod->Expose_Object("cppBar", B);
+```
 
 With the Bar instance B exposed into the interpreter,
 I can execute the following python code
 
-    x = cppBar.getX()
-    cppBar.setX(1)
+```python
+# In some python environment
+x = cppBar.getX()
+cppBar.setX(1)
+```
 
 The cppBar variable is tied to the Bar instance B that we exposed,
 and will be valid as long as that instance's address is valid.
 
 C++ class instances can also be exposed via their pointer
 
-    // Expose a pointer to Bar instance B into the main module
-    pyl::GetMainModule.set_attr("ptrBar", &B);
+```C++
+// Expose a pointer to Bar instance B into the main module
+pyl::GetMainModule.set_attr("ptrBar", &B);
 
-    // Assuming the Bar class definition has been imported, 
-    // the wrapper variable can be declared
-    pyl::RunCmd("cppB = pylBar.Bar(ptrB");
+// Assuming the Bar class definition has been imported, 
+// the wrapper variable can be declared
+pyl::RunCmd("cppB = pylBar.Bar(ptrB");
+```
