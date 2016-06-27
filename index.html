@@ -1,129 +1,130 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
+
   <head>
-    <meta charset="utf-8">
+    <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Pyliaison by mynameisjohn</title>
+    <meta name="description" content="Pyliaison : A mashup of pywrapper and EcsPython that attempts facilitate communication between python and c++11. ">
 
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/github-light.css">
-    <meta name="viewport" content="width=device-width">
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Pyliaison</title>
   </head>
+
   <body>
-    <div class="wrapper">
-      <header>
-        <h1>Pyliaison</h1>
-        <p>A mashup of pywrapper and EcsPython that attempts facilitate communication between python and c++11. </p>
 
-        <p class="view"><a href="https://github.com/mynameisjohn/PyLiaison">View the Project on GitHub <small>mynameisjohn/PyLiaison</small></a></p>
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/mynameisjohn/PyLiaison">View on GitHub</a>
 
+          <h1 id="project_title">Pyliaison</h1>
+          <h2 id="project_tagline">A mashup of pywrapper and EcsPython that attempts facilitate communication between python and c++11. </h2>
 
-        <ul>
-          <li><a href="https://github.com/mynameisjohn/PyLiaison/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/mynameisjohn/PyLiaison/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/mynameisjohn/PyLiaison">View On <strong>GitHub</strong></a></li>
-        </ul>
-      </header>
-      <section>
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/mynameisjohn/PyLiaison/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/mynameisjohn/PyLiaison/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
         <h1>
 <a id="pyliaison" class="anchor" href="#pyliaison" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>PyLiaison</h1>
 
 <p>A library that easily allows users to embed python interpreters in C++ applications and facilitates data transfer to and from the interpreter.</p>
 
-<p><code>pyl::RunCmd( "print('Hello from Python!')" );</code></p>
+<div class="highlight highlight-source-c++"><pre><span class="pl-en">pyl::RunCmd</span>( <span class="pl-s"><span class="pl-pds">"</span>print('Hello from Python!')<span class="pl-pds">"</span></span> );</pre></div>
+
+<h2>
+<a id="purpose" class="anchor" href="#purpose" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Purpose</h2>
+
+<p>The purpose of this library is to allow for projects that make use of both dynamic and compiled code to obtain a balance between performance and iteration time. C++ code can be exposed to and driven by python scripts via the use of custom modules created at runtime, and python objects (including modules and functions) can be encapsulated into C++ objects for scripted interfaces and components. </p>
+
+<p>Data can also be passed to and from the interpreter freely, and custom overloads can be written to convert python objects to C++ types or allocate python objects from C++ types. </p>
 
 <h2>
 <a id="examples" class="anchor" href="#examples" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Examples</h2>
 
 <p>Here is a simple example that shows how you can communicate with the interpreter. The interpreter is initalized, and the main module is retrieved as a pyl::Object (a shared ptr type meant to mimic mutable python types.) </p>
 
-<pre><code>// Initialize the python interpreter
-pyl::initialize();
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Initialize the python interpreter</span>
+<span class="pl-en">pyl::initialize</span>();
 
-// Get the main module, which is stored as python object
+<span class="pl-c">// Get the main module, which is stored as python object</span>
 pyl::Object obMain = pyl::GetMainModule()
-</code></pre>
 
-<p>The attrdict of an object can be accessed freely via templated set and get functions.</p>
+<span class="pl-c">// The attributes of an object can be accessed freely via templated set and get functions.</span>
 
-<pre><code>// Create a object in the module (an int named iVal)
-int iVal( 12345 );
-obMain.set_attr( "iVal", iVal );
+<span class="pl-c">// Create a object in the module (an int named iVal)</span>
+<span class="pl-k">int</span> <span class="pl-en">iVal</span>( <span class="pl-c1">12345</span> );
+obMain.set_attr( <span class="pl-s"><span class="pl-pds">"</span>iVal<span class="pl-pds">"</span></span>, iVal );
 
-// Negate the value in python
-pyl::RunCmd( "iVal = -iVal" );
+<span class="pl-c">// Negate the value in python</span>
+<span class="pl-en">pyl::RunCmd</span>( <span class="pl-s"><span class="pl-pds">"</span>iVal = -iVal<span class="pl-pds">"</span></span> );
 
-// Get the value and convert it to an int
-int iNegVal( 0 );
-obMain.get_attr( "iVal", iNegVal'
-</code></pre>
-
-<p>Finalizing the interpreter</p>
-
-<pre><code>// Shut down the interpreter
-pyl::finalize();
-</code></pre>
+<span class="pl-c">// Get the value and convert it to an int</span>
+<span class="pl-k">int</span> <span class="pl-en">iNegVal</span>( <span class="pl-c1">0</span> );
+obMain.get_attr( <span class="pl-s"><span class="pl-pds">"</span>iVal<span class="pl-pds">"</span></span>, iNegVal<span class="pl-s"><span class="pl-pds">'</span></span>
+<span class="pl-s"></span>
+<span class="pl-s">// Shut down the interpreter</span>
+<span class="pl-s">pyl::finalize();</span></pre></div>
 
 <h3>
 <a id="modules" class="anchor" href="#modules" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Modules</h3>
 
 <p>Custom modules can be declared in C++. The modules can contain interfaces to functions, class definitions, and member functions that can be imported by the interpreter.</p>
 
-<pre><code>// We'll declare this function in a custom module
-double mycos( double d ) {
-    return cos( d );
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// We'll declare this function in a custom module</span>
+<span class="pl-k">double</span> <span class="pl-en">mycos</span>( <span class="pl-k">double</span> d ) {
+    <span class="pl-k">return</span> <span class="pl-c1">cos</span>( d );
 }
 
-// Define a module named pylFuncs
+<span class="pl-c">// Define a module named pylFuncs</span>
 pyl::ModuleDef * pModDef = CreateMod( pylFuncs );
 
-// Add the Mycos function to the module
-AddFnToMod( pModDef, mycos );
+<span class="pl-c">// Add the Mycos function to the module</span>
+<span class="pl-en">AddFnToMod</span>( pModDef, mycos );
 
-// Initialize the interpreter
-pyl::initialize();
+<span class="pl-c">// Initialize the interpreter</span>
+<span class="pl-en">pyl::initialize</span>();
 
-//Import our module and invoke the function
-pyl::RunCmd( "import pylFuncs" );
-pyl::RunCmd( "print('The cosine of 0 is', pylFuncs.Mycos(0.))" );
-</code></pre>
+<span class="pl-c">//Import our module and invoke the function</span>
+<span class="pl-en">pyl::RunCmd</span>( <span class="pl-s"><span class="pl-pds">"</span>import pylFuncs<span class="pl-pds">"</span></span> );
+<span class="pl-en">pyl::RunCmd</span>( <span class="pl-s"><span class="pl-pds">"</span>print('The cosine of 0 is', pylFuncs.Mycos(0.))<span class="pl-pds">"</span></span> );</pre></div>
 
 <p>Like real python modules, custom modules can be wrapped by a pyl::Object and manipulated like anything else. </p>
 
-<pre><code>// Get the os.path module as an pyl::Object, which is backed by a shared_ptr 
-pyl::RunCmd( "from os import path" );
-pyl::Object obPathMod = pyl::GetMainModule().get_attr( "path" );
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Get the os.path module as an pyl::Object, which is backed by a shared_ptr </span>
+<span class="pl-en">pyl::RunCmd</span>( <span class="pl-s"><span class="pl-pds">"</span>from os import path<span class="pl-pds">"</span></span> );
+pyl::Object obPathMod = pyl::GetMainModule().get_attr( <span class="pl-s"><span class="pl-pds">"</span>path<span class="pl-pds">"</span></span> );
 
-// Invoke the abspath function on the current file, store value
+<span class="pl-c">// Invoke the abspath function on the current file, store value</span>
 std::string filePath;
-obPathMod.call("abspath", __FILE__).convert(filePath);
-</code></pre>
+obPathMod.call(<span class="pl-s"><span class="pl-pds">"</span>abspath<span class="pl-pds">"</span></span>, __FILE__).convert(filePath);</pre></div>
 
 <h3>
 <a id="functions-and-scripts" class="anchor" href="#functions-and-scripts" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Functions and Scripts</h3>
 
 <p>Suppose I write a script (in a file named script.py) with a function that delimits strings, returning the individual strings in a list:</p>
 
-<pre><code># script.py
-def delimit(str, d):
-    return str.split(d)
-</code></pre>
+<div class="highlight highlight-source-python"><pre><span class="pl-c"># script.py</span>
+<span class="pl-k">def</span> <span class="pl-en">delimit</span>(<span class="pl-smi">str</span>, <span class="pl-smi">d</span>):
+    <span class="pl-k">return</span> <span class="pl-c1">str</span>.split(d)</pre></div>
 
 <p>Scripts can be loaded into pyl::Objects. Any object with a callable variable can be accessed by using a pyl::Object's call function. </p>
 
-<pre><code>// Load the script from disk into a pyl::Object
-pyl::Object obScript = pyl::Object::from_script("script.py");
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Load the script from disk into a pyl::Object</span>
+pyl::Object obScript = pyl::Object::from_script(<span class="pl-s"><span class="pl-pds">"</span>script.py<span class="pl-pds">"</span></span>);
 
-// We'll turn this sentence into a vector of words
-std::string sentence = "My name is john";
+<span class="pl-c">// We'll turn this sentence into a vector of words</span>
+std::string sentence = <span class="pl-s"><span class="pl-pds">"</span>My name is john<span class="pl-pds">"</span></span>;
 std::vector&lt;std::string&gt; vWords;
 
-// Call the function, convert the return value into a vector of strings
-obScript.call("delimit", sentence, " ").convert(vWords);
-</code></pre>
+<span class="pl-c">// Call the function, convert the return value into a vector of strings</span>
+obScript.call(<span class="pl-s"><span class="pl-pds">"</span>delimit<span class="pl-pds">"</span></span>, sentence, <span class="pl-s"><span class="pl-pds">"</span> <span class="pl-pds">"</span></span>).convert(vWords);</pre></div>
 
 <h3>
 <a id="objects-and-classes" class="anchor" href="#objects-and-classes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Objects and Classes</h3>
@@ -132,81 +133,82 @@ obScript.call("delimit", sentence, " ").convert(vWords);
 
 <p>If I were to declare a Foo instance f in this script, I could store it in C++ inside a pyl::Object</p>
 
-<pre><code># Foo.py
-class Foo:
-    def __init__(self):
-        pass
+<div class="highlight highlight-source-python"><pre><span class="pl-c"># Foo.py</span>
+<span class="pl-k">class</span> <span class="pl-en">Foo</span>:
+    <span class="pl-k">def</span> <span class="pl-c1">__init__</span>(<span class="pl-smi"><span class="pl-smi">self</span></span>):
+        <span class="pl-k">pass</span>
 
-    def doSomething(self):
-        print('Something')
+    <span class="pl-k">def</span> <span class="pl-en">doSomething</span>(<span class="pl-smi"><span class="pl-smi">self</span></span>):
+        <span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds">'</span>Something<span class="pl-pds">'</span></span>)
 
-f = Foo()
-</code></pre>
+f <span class="pl-k">=</span> Foo()</pre></div>
 
 <p>The object can be stored as a C++ variable or declared into another pyl::Object. </p>
 
-<pre><code>// Get the object from the script and store it in a pyl::Object
-pyl::Object obFooInst = pyl::Object::from_script("Foo.py").get_attr("f");
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Get the object from the script and store it in a pyl::Object</span>
+pyl::Object obFooInst = pyl::Object::from_script(<span class="pl-s"><span class="pl-pds">"</span>Foo.py<span class="pl-pds">"</span></span>).get_attr(<span class="pl-s"><span class="pl-pds">"</span>f<span class="pl-pds">"</span></span>);
 
-// Invoke a member function using the instance
-obFooInst.call("doSomething");
+<span class="pl-c">// Invoke a member function using the instance</span>
+obFooInst.call(<span class="pl-s"><span class="pl-pds">"</span>doSomething<span class="pl-pds">"</span></span>);
 
-// Declare a reference to the original object in the main module
-pyl::GetMainModule().set_attr("f", obFooInst);
-</code></pre>
+<span class="pl-c">// Declare a reference to the original object in the main module</span>
+<span class="pl-en">pyl::GetMainModule</span>().set_attr(<span class="pl-s"><span class="pl-pds">"</span>f<span class="pl-pds">"</span></span>, obFooInst);</pre></div>
 
 <p>Instances of C++ structs and classes can also be exposed into the interpreter by reference.
 The definitions of the object are stored in a custom module like so:</p>
 
-<pre><code>// The C++ Bar class definition
-class Bar{
-    int x;
-public:
-    Bar() : x(0) {}
-    void setX(int x) { this-&gt;x = x);
-    int getX() return { x);
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// The C++ Bar class definition</span>
+<span class="pl-k">class</span> <span class="pl-en">Bar</span>{
+    <span class="pl-k">int</span> x;
+<span class="pl-k">public:</span>
+    <span class="pl-en">Bar</span>() : x(<span class="pl-c1">0</span>) {}
+    <span class="pl-k">void</span> <span class="pl-en">setX</span>(<span class="pl-k">int</span> x) { <span class="pl-v">this</span>-&gt;x = x);
+    <span class="pl-k">int</span> <span class="pl-smi">getX</span>() <span class="pl-k">return</span> { x);
 };
 
-// Create a pyl module
-pyl::ModuleDef * pBarMod = CreateMod( pylBar );
+<span class="pl-c">// Create a pyl module</span>
+pyl::ModuleDef * pBarMod = <span class="pl-c1">CreateMod</span>( pylBar );
 
-// Add the class definiiton and member functions
-AddClassDefToMod(pBarMod, Bar);
-AddMemFnTomod(pBarMod, setX, void, int);
-AddMemFnTomod(pBarMod, getX, int);
+<span class="pl-c">// Add the class definiiton and member functions</span>
+<span class="pl-c1">AddClassDefToMod</span>(pBarMod, Bar);
+<span class="pl-c1">AddMemFnTomod</span>(pBarMod, setX, <span class="pl-k">void</span>, <span class="pl-k">int</span>);
+<span class="pl-c1">AddMemFnTomod</span>(pBarMod, getX, <span class="pl-k">int</span>);
 
-// Now I can use the module definition to declare
-// wrapper variable to a Bar instance named cppBar
+<span class="pl-c">// Now I can use the module definition to declare</span>
+<span class="pl-c">// wrapper variable to a Bar instance named cppBar</span>
 Bar B;
-pBarMod-&gt;Expose_Object("cppBar", B);
-</code></pre>
+pBarMod-&gt;<span class="pl-c1">Expose_Object</span>(<span class="pl-s"><span class="pl-pds">"</span>cppBar<span class="pl-pds">"</span></span>, B);</pre></div>
 
 <p>With the Bar instance B exposed into the interpreter,
 I can execute the following python code</p>
 
-<pre><code>x = cppBar.getX()
-cppBar.setX(1)
-</code></pre>
+<div class="highlight highlight-source-python"><pre><span class="pl-c"># In some python environment</span>
+x <span class="pl-k">=</span> cppBar.getX()
+cppBar.setX(<span class="pl-c1">1</span>)</pre></div>
 
 <p>The cppBar variable is tied to the Bar instance B that we exposed,
 and will be valid as long as that instance's address is valid.</p>
 
 <p>C++ class instances can also be exposed via their pointer</p>
 
-<pre><code>// Expose a pointer to Bar instance B into the main module
-pyl::GetMainModule.set_attr("ptrBar", &amp;B);
+<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Expose a pointer to Bar instance B into the main module</span>
+pyl::GetMainModule.set_attr(<span class="pl-s"><span class="pl-pds">"</span>ptrBar<span class="pl-pds">"</span></span>, &amp;B);
 
-// Assuming the Bar class definition has been imported, 
-// the wrapper variable can be declared
-pyl::RunCmd("cppB = pylBar.Bar(ptrB");
-</code></pre>
+<span class="pl-c">// Assuming the Bar class definition has been imported, </span>
+<span class="pl-c">// the wrapper variable can be declared</span>
+<span class="pl-en">pyl::RunCmd</span>(<span class="pl-s"><span class="pl-pds">"</span>cppB = pylBar.Bar(ptrB<span class="pl-pds">"</span></span>);</pre></div>
       </section>
-      <footer>
-        <p>This project is maintained by <a href="https://github.com/mynameisjohn">mynameisjohn</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Pyliaison maintained by <a href="https://github.com/mynameisjohn">mynameisjohn</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
-    <script src="javascripts/scale.fix.js"></script>
+
     
+
   </body>
 </html>
