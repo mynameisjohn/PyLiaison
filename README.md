@@ -4,6 +4,12 @@ A library that easily allows users to embed python interpreters in C++ applicati
 
 `pyl::RunCmd( "print('Hello from Python!')" );`
 
+## Purpose
+
+The purpose of this library is to allow for projects that make use of both dynamic and compiled code to obtain a balance between performance and iteration time. C++ code can be exposed to and driven by python scripts via the use of custom modules created at runtime, and python objects (including modules and functions) can be encapsulated into C++ objects for scripted interfaces and components. 
+
+Data can also be passed to and from the interpreter freely, and custom overloads can be written to convert python objects to C++ types or allocate python objects from C++ types. 
+
 ## Examples
 
 Here is a simple example that shows how you can communicate with the interpreter. The interpreter is initalized, and the main module is retrieved as a pyl::Object (a shared ptr type meant to mimic mutable python types.) 
@@ -14,7 +20,7 @@ Here is a simple example that shows how you can communicate with the interpreter
     // Get the main module, which is stored as python object
     pyl::Object obMain = pyl::GetMainModule()
 
-The attrdict of an object can be accessed freely via templated set and get functions.
+The attributes of an object can be accessed freely via templated set and get functions.
 
     // Create a object in the module (an int named iVal)
     int iVal( 12345 );
