@@ -6,9 +6,12 @@ set(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 
 # These paths work for me on windows and unix, but they may need changing
 if (WIN32)
-	set(PYTHON_LIBRARY C:/Python35/libs/python35_d.lib)
+    # This works for me on windows for python3.5
+    # (though I occasionally link debug)
+	set(PYTHON_LIBRARY C:/Python35/libs/python35.lib)
 	set(PYTHON_INCLUDE_DIR C:/Python35/include)
 else(WIN32)
+    # This is where brew put the python dev libraries
 	set(PYTHON_LIBRARY /usr/local/lib/libpython3.5m.a)
 	set(PYTHON_INCLUDE_DIR /usr/local/include/python3.5m)
 endif(WIN32)
@@ -24,3 +27,6 @@ add_library(PyLiaison ${SOURCES} ${HEADERS})
 target_include_directories(PyLiaison PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
 
 # Add several tests
+add_executable(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
+target_include_directories(pylHelloWorld PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
+target_link_libraries(pylHelloWorld LINK_PUBLIC PyLiaison ${PYTHON_LIBRARY})

@@ -45,7 +45,7 @@ namespace pyl
 	class runtime_error : public std::runtime_error
 	{
 	public:
-		runtime_error( const char * message ) : std::runtime_error( message ) {}
+		runtime_error( std::string strMessage ) : std::runtime_error( strMessage ) {}
 	};
 
 	// Several python APIs require a null terminated array of data
@@ -190,6 +190,9 @@ namespace pyl
 		* \param obj The pointer from which to construct this Object.
 		*/
 		Object(PyObject *obj);
+
+        // Construct an object from a script
+        Object(std::string strScript);
 
 		/**
 		* \brief Calls the callable attribute "name" using the provided

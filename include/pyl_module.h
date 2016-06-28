@@ -418,7 +418,12 @@ namespace pyl
 
 			// Add this module to the list of builtin modules, and ensure m_fnModInit gets called on import
 			int success = PyImport_AppendInittab( mod.getNameBuf(), get_fn_ptr<tag>( mod.m_fnModInit ) );
-
+            if (success != 0)
+            {
+                throw pyl::runtime_error("Error creating module " + moduleName);
+                return nullptr;
+            }
+    
 			return &mod;
 		}
 
