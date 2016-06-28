@@ -27,6 +27,20 @@ add_library(PyLiaison ${SOURCES} ${HEADERS})
 target_include_directories(PyLiaison PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
 
 # Add several tests
+# Hello World
 add_executable(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
 target_include_directories(pylHelloWorld PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
 target_link_libraries(pylHelloWorld LINK_PUBLIC PyLiaison ${PYTHON_LIBRARY})
+
+# Functions
+add_executable(pylTestFunctions ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestFunctions.cpp)
+target_include_directories(pylTestFunctions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
+target_link_libraries(pylTestFunctions LINK_PUBLIC PyLiaison ${PYTHON_LIBRARY})
+
+# Scripts
+add_executable(pylTestScript ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestScript.cpp)
+target_include_directories(pylTestScript PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PYTHON_INCLUDE_DIR})
+target_link_libraries(pylTestScript LINK_PUBLIC PyLiaison ${PYTHON_LIBRARY})
+
+# TODO
+# Classes and Modules
