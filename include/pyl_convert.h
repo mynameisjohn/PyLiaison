@@ -181,9 +181,16 @@ namespace pyl
 	// try and specialize any type that you don't want getting caught in this conversion
 	template<typename T>
 	bool convert(PyObject * obj, T *& val) {
-		//if (!PyCapsule_CheckExact(obj))
-		val = static_cast<T *>(PyCapsule_GetPointer(obj, NULL));
-		return true;
+		// Try getting the pointer from the capsule
+		T * pRet = static_cast<T *>(PyCapsule_GetPointer( obj, NULL ));
+		if ( pRet )
+		{
+			val = pRet;
+			return true;
+		}
+		
+		// If that doesn't work, try converting from a size_t
+		return convert<size_t>( obj, (size_t&) val );
 	}
 
 	// -------------- PyObject allocators ----------------
