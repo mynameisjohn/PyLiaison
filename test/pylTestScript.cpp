@@ -1,6 +1,7 @@
 #include <pyliaison.h>
 #include <iostream>
 #include <list>
+#include <string>
 
 // We'll be sending argv to a python script following the argparse example
 // which expects a sequence of integers that it will sum or find the max of
@@ -15,12 +16,11 @@ int main( int argc, char ** argv )
 		// We're going to import a script as an object
 		pyl::Object obScript = pyl::Object::from_script( "./script.py" );
 
-		// This script has the argparse exampel in it, so let's 
-		// forward our arguments to the script. Put all args in a list
-		std::list<char *> liArgs( argv, argv + argc );
-
-		// Call the script function
-		obScript.call( "ParseCPPArgs", std::list<char *>( { argv, argv + argc } ) );
+		// This script has the argparse example in it, so let's 
+		// forward our arguments to the script. Put all args in 
+		// a list and pass it to a function in the script
+		std::list<std::string> liArgs{ argv, argv + argc };
+		obScript.call( "ParseCPPArgs", liArgs);
 
 		// Scripts and modules are like any objects - they contain an
 		// attrDict and can have attribute set via set_attr

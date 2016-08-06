@@ -10,10 +10,14 @@ if (WIN32)
     # (though I occasionally link debug)
 	set(PYTHON_LIBRARY C:/Python35/libs/python35.lib)
 	set(PYTHON_INCLUDE_DIR C:/Python35/include)
-else(WIN32)
+elseif(APPLE)
     # This is where brew put the python dev libraries
 	set(PYTHON_LIBRARY /usr/local/lib/libpython3.5m.a)
 	set(PYTHON_INCLUDE_DIR /usr/local/include/python3.5m)
+elseif(UNIX)
+    # This is where brew put the python dev libraries
+	set(PYTHON_LIBRARY "-L/usr/lib/x86_64-linux-gnu -lpython3.5m")
+	set(PYTHON_INCLUDE_DIR /usr/include/python3.5m)
 endif(WIN32)
 
 # Several headers, just one source file
