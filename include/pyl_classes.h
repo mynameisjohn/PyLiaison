@@ -45,7 +45,7 @@ namespace pyl
 	class runtime_error : public std::runtime_error
 	{
 	public:
-		runtime_error( const char * message ) : std::runtime_error( message ) {}
+		runtime_error( std::string message ) : std::runtime_error( message ) {}
 	};
 
 	// Several python APIs require a null terminated array of data
@@ -204,7 +204,7 @@ namespace pyl
 		* \return pyl::Object containing the result of the function.
 		*/
 		template<typename... Args>
-		Object call(const std::string name, const Args&... args) {
+		Object call(const std::string name, const Args... args) {
 			pyunique_ptr func(load_function(name));
 			// Create the tuple argument
 			pyunique_ptr tup(PyTuple_New(sizeof...(args)));
@@ -214,7 +214,7 @@ namespace pyl
 			if ( !ret )
 			{
 				PyErr_Print();
-				throw std::runtime_error( "Failed to call function " + name );
+				throw pyl::runtime_error( "Failed to call function " + name );
 			}
 			return{ ret };
 		}
