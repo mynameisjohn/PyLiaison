@@ -33,13 +33,15 @@ namespace pyl
 	using _PyFunc = std::function<PyObject *(PyObject *, PyObject *)>;
 
 	// Deleter that calls Py_XDECREF on the PyObject parameter.
-	struct _PyObjectDeleter {
-		void operator()(PyObject *obj) {
-			Py_XDECREF(obj);
+	struct _PyObjectDeleter
+	{
+		void operator()( PyObject *obj )
+		{
+			Py_XDECREF( obj );
 		}
 	};
 	// unique_ptr that uses Py_XDECREF as the destructor function.
-	using pyunique_ptr = std::unique_ptr<PyObject, _PyObjectDeleter> ;
+	using pyunique_ptr = std::unique_ptr<PyObject, _PyObjectDeleter>;
 
 	// Inherit from std::runtime_error... felt like the right thing to do
 	class runtime_error : public std::runtime_error
@@ -63,13 +65,13 @@ namespace pyl
 		_MemberDefs m_ntMemberDefs;
 		std::set<std::string> m_setUsedMemberNames;
 		std::list<std::string> m_liMemberDocs;
-		
+
 		PyTypeObject m_TypeObject;
 
 	public:
 		bool AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs = "" );
 		bool AddMember( std::string strMemberName, int type, int offset, int flags, std::string doc = "" );
-		
+
 		void Prepare();
 		bool IsPrepared() const;
 
@@ -101,7 +103,8 @@ namespace pyl
 	* \class Object
 	* \brief This class represents a python object.
 	*/
-	class Object {
+	class Object
+	{
 	public:
 		/**
 		* \brief Constructs a default python object
@@ -115,10 +118,10 @@ namespace pyl
 		* means no Py_INCREF is performed on it.
 		* \param obj The pointer from which to construct this Object.
 		*/
-		Object(PyObject *obj);
+		Object( PyObject *obj );
 
-        // Construct an object from a script
-        Object(std::string strScript);
+		// Construct an object from a script
+		Object( std::string strScript );
 
 		/**
 		* \brief Calls the callable attribute "name" using the provided
@@ -133,13 +136,14 @@ namespace pyl
 		* \return pyl::Object containing the result of the function.
 		*/
 		template<typename... Args>
-		Object call(const std::string name, const Args... args) {
-			pyunique_ptr func(load_function(name));
+		Object call( const std::string name, const Args... args )
+		{
+			pyunique_ptr func( load_function( name ) );
 			// Create the tuple argument
-			pyunique_ptr tup(PyTuple_New(sizeof...(args)));
-			add_tuple_vars(tup, args...);
+			pyunique_ptr tup( PyTuple_New( sizeof...(args) ) );
+			add_tuple_vars( tup, args... );
 			// Call our object
-			PyObject *ret(PyObject_CallObject(func.get(), tup.get()));
+			PyObject *ret( PyObject_CallObject( func.get(), tup.get() ) );
 			if ( !ret )
 			{
 				PyErr_Print();
@@ -158,7 +162,7 @@ namespace pyl
 		* \param name The name of the callable attribute to be executed.
 		* \return pyl::Object containing the result of the function.
 		*/
-		Object call(const std::string name);
+		Object call( const std::string name );
 
 		/**
 		* \brief Finds and returns the attribute named "name".
@@ -169,7 +173,7 @@ namespace pyl
 		* \param name The name of the attribute to be returned.
 		* \return pyl::Object representing the attribute.
 		*/
-		Object get_attr(const std::string &name);
+		Object get_attr( const std::string &name );
 
 		// Like above, but without converts as well
 		template<typename T>
@@ -187,14 +191,15 @@ namespace pyl
 		* \param name The name of the attribute to be searched.
 		* \return bool indicating whether the attribute is defined.
 		*/
-		bool has_attr(const std::string &name);
-        
-        template<typename T>
-        bool set_attr(const std::string &name, T obj){
-            PyObject * pyObj = alloc_pyobject(obj);
-            int success = PyObject_SetAttrString(this->get(), name.c_str(), pyObj);
-            return (success == 0);
-        }
+		bool has_attr( const std::string &name );
+
+		template<typename T>
+		bool set_attr( const std::string &name, T obj )
+		{
+			PyObject * pyObj = alloc_pyobject( obj );
+			int success = PyObject_SetAttrString( this->get(), name.c_str(), pyObj );
+			return (success == 0);
+		}
 
 		/**
 		* \brief Returns the internal PyObject*.
@@ -207,8 +212,9 @@ namespace pyl
 		PyObject *get() const { return py_obj.get(); }
 
 		template<class T>
-		bool convert(T &param) {
-			return pyl::convert(py_obj.get(), param);
+		bool convert( T &param )
+		{
+			return pyl::convert( py_obj.get(), param );
 		}
 
 		/**
@@ -221,50 +227,55 @@ namespace pyl
 		* \param script_path The path of the script to be loaded.
 		* \return Object representing the loaded script.
 		*/
-		static Object from_script(const std::string &script_path);
+		static Object from_script( const std::string &script_path );
 
 		void Reset();
 
 	protected:
 		typedef std::shared_ptr<PyObject> pyshared_ptr;
 
-		PyObject *load_function(const std::string &name);
+		PyObject *load_function( const std::string &name );
 
-		pyshared_ptr make_pyshared(PyObject *obj);
+		pyshared_ptr make_pyshared( PyObject *obj );
 
 		// Variadic template method to add items to a tuple
 		template<typename First, typename... Rest>
-		void add_tuple_vars(pyunique_ptr &tup, const First &head, const Rest&... tail) {
+		void add_tuple_vars( pyunique_ptr &tup, const First &head, const Rest&... tail )
+		{
 			add_tuple_var(
 				tup,
-				PyTuple_Size(tup.get()) - sizeof...(tail)-1,
+				PyTuple_Size( tup.get() ) - sizeof...(tail) -1,
 				head
 				);
-			add_tuple_vars(tup, tail...);
+			add_tuple_vars( tup, tail... );
 		}
 
 
-		void add_tuple_vars(pyunique_ptr &tup, PyObject *arg) {
-			add_tuple_var(tup, PyTuple_Size(tup.get()) - 1, arg);
+		void add_tuple_vars( pyunique_ptr &tup, PyObject *arg )
+		{
+			add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, arg );
 		}
 
 		// Base case for add_tuple_vars
 		template<typename Arg>
-		void add_tuple_vars(pyunique_ptr &tup, const Arg &arg) {
-			add_tuple_var(tup,
-				PyTuple_Size(tup.get()) - 1, alloc_pyobject(arg)
-				);
+		void add_tuple_vars( pyunique_ptr &tup, const Arg &arg )
+		{
+			add_tuple_var( tup,
+						   PyTuple_Size( tup.get() ) - 1, alloc_pyobject( arg )
+						   );
 		}
 
 		// Adds a PyObject* to the tuple object
-		void add_tuple_var(pyunique_ptr &tup, Py_ssize_t i, PyObject *pobj) {
-			PyTuple_SetItem(tup.get(), i, pobj);
+		void add_tuple_var( pyunique_ptr &tup, Py_ssize_t i, PyObject *pobj )
+		{
+			PyTuple_SetItem( tup.get(), i, pobj );
 		}
 
 		// Adds a PyObject* to the tuple object
-		template<class T> void add_tuple_var(pyunique_ptr &tup, Py_ssize_t i,
-			const T &data) {
-			PyTuple_SetItem(tup.get(), i, alloc_pyobject(data));
+		template<class T> void add_tuple_var( pyunique_ptr &tup, Py_ssize_t i,
+											  const T &data )
+		{
+			PyTuple_SetItem( tup.get(), i, alloc_pyobject( data ) );
 		}
 
 		pyshared_ptr py_obj;
