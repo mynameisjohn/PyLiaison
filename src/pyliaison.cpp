@@ -79,6 +79,11 @@ namespace pyl
 		return nullptr;
 	}
 
+    // Invoke the above for string constructor
+    Object::Object(std::string strScript){
+       *this = pyl::Object::from_script(strScript); 
+    }
+
 	PyObject *Object::load_function(const std::string &name) {
 		PyObject *obj(PyObject_GetAttrString(py_obj.get(), name.c_str()));
 		if (!obj)

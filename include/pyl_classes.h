@@ -45,51 +45,8 @@ namespace pyl
 	class runtime_error : public std::runtime_error
 	{
 	public:
-		runtime_error( std::string message ) : std::runtime_error( message ) {}
+		runtime_error( std::string strMessage ) : std::runtime_error( strMessage ) {}
 	};
-
-	// Several python APIs require a null terminated array of data
-	// So that's what this class does (every insertion goes before a null element)
-	// Because this uses a std::vector under the hood inserting will move things in memory,
-	// which is why it's important not to modify any of these structs after they've been 
-	// expsoed to the python interpreter
-	//template <typename D>
-	//struct _NullTermBuf
-	//{
-	//	std::vector<D> v_Data;
-	//	D * Ptr() { return v_Data.data(); }
-	//	_NullTermBuf() :v_Data( 1, { 0 } ) {}
-	//protected:
-	//	// Insert elements before the last (null) element
-	//	void _insert(D data) { v_Data.insert(v_Data.end() - 1, data); }
-	//};
-
-	//// Null terminated method defs
-	//struct MethodDefinitions
-	//{
-	//	std::basic_string<PyMethodDef> m_ntBuf;
-
-	//	// These containers don't invalidate references
-	//	std::list<std::string> MethodNames, MethodDocs;
-
-	//	// Add method definitions before the null terminator
-	//	void AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs = "");
-	//};
-
-	//// Null terminated member defs
-	//struct MemberDefinitions
-	//{
-	//	std::basic_string<PyMemberDef> m_ntBuf;
-
-	//	// These containers don't invalidate references
-	//	std::list<std::string> MemberNames, MemberDocs;
-
-	//	// Use base
-	//	MemberDefinitions();// : NullTermBuf() {}
-
-	//	// Add method definitions before the null terminator
-	//	void AddMember(std::string name, int type, int offset, int flags, std::string docs = "");
-	//};
 
 	// Defines an exposed class (which is not per instance)
 	// as well as a list of exposed instances
@@ -136,37 +93,6 @@ namespace pyl
 			PyObject_HEAD
 				PyObject * capsule{ nullptr };
 		};
-
-		//// The name of the python class
-		//std::string PyClassName;
-  //      
-		//// Each exposed class has a method definition
-		//MethodDefinitions m_MethodDef;
-		//
-  //      // And members
-		//MemberDefinitions m_MemberDef;
-
-		//// The Python type object
-		//PyTypeObject m_TypeObject;
-
-		//// Lock down pointers
-		//void Prepare();
-
-		//// Ref to type object
-		//PyTypeObject& to() { return m_TypeObject; }
-
-		//// Add method definitions before the null terminator
-		//void AddMemberFn(std::string name, PyCFunction fnPtr, int flags, std::string docs = "") {
-		//	m_MethodDef.AddMethod(name, fnPtr, flags, docs);
-		//}
-  //      
-  //      // Add member definitions (which isn't really a thing we want to do...)
-		//void AddMember(std::string name, int type, int offset, int flags, std::string doc = "") {
-		//	m_MemberDef.AddMember(name, type, offset, flags, doc);
-		//}
-
-  //      // Default constructor
-  //      ExposedClass(std::string n = "unnamed");
 	};
 
 	// TODO more doxygen!
@@ -190,6 +116,9 @@ namespace pyl
 		* \param obj The pointer from which to construct this Object.
 		*/
 		Object(PyObject *obj);
+
+        // Construct an object from a script
+        Object(std::string strScript);
 
 		/**
 		* \brief Calls the callable attribute "name" using the provided
