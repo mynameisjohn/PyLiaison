@@ -266,7 +266,7 @@ namespace pyl
 
 	bool convert( PyObject *obj, double &val )
 	{
-		return generic_convert<double>( obj, is_py_float, PyFloat_AsDouble, val );
+		return _generic_convert<double>( obj, is_py_float, PyFloat_AsDouble, val );
 	}
 
 	// It's unforunate that this takes so long

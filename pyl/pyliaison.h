@@ -19,6 +19,14 @@ used when facilitating communication between C++ and Python
 ***********************************************/
 namespace pyl
 {
+	// ----------------- Engine -----------------
+
+	void initialize();
+	void finalize();
+	bool isInitialized();
+
+	// ----------------- Utility -----------------
+
 	// Generic python ret(args, kwargs) function
 	using _PyFunc = std::function<PyObject *( PyObject *, PyObject * )>;
 
@@ -38,7 +46,7 @@ namespace pyl
 		runtime_error( std::string strMessage ) : std::runtime_error( strMessage ) {}
 	};
 
-	// Utility for preprending tabs to python code
+	// Used to get tabs for python code strings
 	std::string get_tabs( int n );
 
 	// Invoke some callable object with a std::tuple
@@ -58,7 +66,7 @@ namespace pyl
 	// This was also stolen from stack overflow
 	// but I'm hoping to phase it out. It allows me to expose
 	// std::functions as function pointers, which python
-	// wants for its PyMethodDef buffer
+	// wants for its PyMethodDef buffer (among other things)
 	template <typename _UniqueTag, typename _Res, typename... _ArgTypes>
 	struct _fun_ptr_helper
 	{
@@ -116,16 +124,42 @@ namespace pyl
 	// TODO
 	//rewrite make_function for class member functions
 
+	// Returns the interpreter's total ref count
 	int get_total_ref_count();
+
+	// Print the current error set in the interpreter
 	void print_error();
+
+	// Clear whatever error the interpreter has set
+	void clear_error();
+
+	// Invoke the standard print function on a PyObject
+	void print_object( PyObject *obj );
 
 	// ------------ Conversion functions ------------
 
+	/*! convert \brief Convert a PyObject to a string
+	Works if the object is a bytes or unicode string*/
 	bool convert( PyObject *obj, std::string &val );
+	
+	/*! convert \brief Convert a PyObject to a char vector
+	Works if the object is a bytearray*/
 	bool convert( PyObject *obj, std::vector<char> &val );
+
+	/*! convert \brief Convert a PyObject to a bool
+	Could be more lenient - only accepts True or False for now*/
 	bool convert( PyObject *obj, bool &value );
+
+	/*! convert \brief Convert a PyObject to a double
+	Works if the object is a PyFloat or PyLong*/
 	bool convert( PyObject *obj, double &val );
+
+	/*! convert \brief Convert a PyObject to a float
+	Works if the object is a PyFloat or PyLong*/
 	bool convert( PyObject *obj, float &val );
+
+	/*! convert \brief Convert a PyObject to some integral type
+	Works if the object is a PyLong*/
 	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type = 0>
 	bool convert( PyObject *obj, T &val )
 	{
@@ -135,24 +169,48 @@ namespace pyl
 		return true;
 	}
 
-	template<class T, class C>
-	bool convert_list( PyObject *obj, C &container );
+	/*! convert_list \brief Convert a PyObject to a generic container type
+	The Container type must have a push_back method*/
+	template<class T, class C> bool convert_list( PyObject *obj, C &container );
+
+	/*! convert \brief Convert a PyObject to a std::list of type T
+	Works if input is a python list and every entry is convertable to T*/
 	template<class T> bool convert( PyObject *obj, std::list<T> &lst );
+
+	/*! convert \brief Convert a PyObject to a std::vector of type T
+	Works if input is a python list and every entry is convertable to T*/
 	template<class T> bool convert( PyObject *obj, std::vector<T> &vec );
+
+	/*! convert \brief Convert a PyObject to an array of type T and size N
+	Works if input is a python list and every entry is convertable to T*/
 	template<class T> bool convert( PyObject *obj, T * arr, int N );
+
+	/*! convert \brief Convert a PyObject to a std::array of type T and size N
+	Works if input is a python list and every entry is convertable to T*/
 	template<class T, size_t N> bool convert( PyObject *obj, std::array<T, N>& arr );
+
+	/*! convert \brief Convert a PyObject to a std::map<K, V>
+	Works if the input is a dict where each key/value is convertable to K/V*/
 	template<class K, class V> bool convert( PyObject *obj, std::map<K, V> &mp );
+
+	/*! convert \brief Convert a PyObject to a std::set<T>
+	Works if input is a python set and each element is convertable to T*/
 	template<class C> bool convert( PyObject *obj, std::set<C>& s );
 
-	template<class T> bool generic_convert( PyObject *obj,
+	// Used internally
+	template<class T> bool _generic_convert( PyObject *obj,
 											const std::function<bool( PyObject* )> &is_obj,
 											const std::function<T( PyObject* )> &converter,
 											T &val );
 
-	// Convert to a pyl::Object; useful if function can unpack it
+	/*! convert \brief Convert a PyObject to a pyl::Object
+	This allows the use of an opaque python object in C++ code*/
 	class Object;
 	bool convert( PyObject * obj, pyl::Object& pyObj );
 
+	/*! convert \brief Convert a PyObject to a pointer of type T
+	Converts either a capsule or address (integer) to a pointer to some T
+	It's up to you to make sure the address coming from python is valid*/
 	template<typename T> bool convert( PyObject * obj, T *& val );
 
 	// Add to Tuple functions
@@ -161,45 +219,47 @@ namespace pyl
 	// std::tuple. I added the b parameter because I wanted
 	// to set it to 1 and leave the first element alone.
 
-	template<typename First, typename... Rest> void add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail );
-	void add_tuple_vars( unique_ptr &tup, PyObject *arg );
-	template<typename Arg> void add_tuple_vars( unique_ptr &tup, const Arg &arg );
-	void add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj );
+	// Forward declarations
+	template<typename First, typename... Rest> void _add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail );
+	void _add_tuple_vars( unique_ptr &tup, PyObject *arg );
+	template<typename Arg> void _add_tuple_vars( unique_ptr &tup, const Arg &arg );
+	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj );
 
-	// Variadic template method to add items to a tuple
 	template<typename First, typename... Rest>
-	void add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail )
+	void _add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail )
 	{
-		add_tuple_var(
+		_add_tuple_var(
 			tup,
 			PyTuple_Size( tup.get() ) - sizeof...(tail) -1,
 			head
 		);
-		add_tuple_vars( tup, tail... );
+
+		// 
+		_add_tuple_vars( tup, tail... );
 	}
 
-	void add_tuple_vars( unique_ptr &tup, PyObject *arg )
+	void _add_tuple_vars( unique_ptr &tup, PyObject *arg )
 	{
-		add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, arg );
+		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, arg );
 	}
 
 	// Base case for add_tuple_vars
 	template<typename Arg>
-	void add_tuple_vars( unique_ptr &tup, const Arg &arg )
+	void _add_tuple_vars( unique_ptr &tup, const Arg &arg )
 	{
-		add_tuple_var( tup,
+		_add_tuple_var( tup,
 					   PyTuple_Size( tup.get() ) - 1, alloc_pyobject( arg )
 		);
 	}
 
 	// Adds a PyObject* to the tuple object
-	void add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj )
+	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj )
 	{
 		PyTuple_SetItem( tup.get(), i, pobj );
 	}
 
 	// Adds a PyObject* to the tuple object
-	template<class T> void add_tuple_var( unique_ptr &tup, Py_ssize_t i, const T &data )
+	template<class T> void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, const T &data )
 	{
 		PyTuple_SetItem( tup.get(), i, alloc_pyobject( data ) );
 	}
@@ -207,7 +267,7 @@ namespace pyl
 	// Base case, when n==b, just convert and return
 	template<size_t n, size_t b, class... Args>
 	typename std::enable_if<n == b, bool>::type
-		add_to_tuple( PyObject *obj, std::tuple<Args...> &tup )
+		_add_to_tuple( PyObject *obj, std::tuple<Args...> &tup )
 	{
 		return convert( PyTuple_GetItem( obj, n - b ), std::get<n>( tup ) );
 	}
@@ -217,9 +277,9 @@ namespace pyl
 	// of the tuple, which is a compile time thing
 	template<size_t n, size_t b, class... Args>
 	typename std::enable_if<n != b, bool>::type
-		add_to_tuple( PyObject *obj, std::tuple<Args...> &tup )
+		_add_to_tuple( PyObject *obj, std::tuple<Args...> &tup )
 	{
-		add_to_tuple<n - 1, b, Args...>( obj, tup );
+		_add_to_tuple<n - 1, b, Args...>( obj, tup );
 		return convert( PyTuple_GetItem( obj, n - b ), std::get<n>( tup ) );
 	}
 
@@ -239,6 +299,11 @@ namespace pyl
 	{
 		if ( !PyDict_Check( obj ) )
 			return false;
+
+		// Use this until we succeed
+		std::map<K, V> mapRet;
+
+		// Iterate through key/value, convert all
 		PyObject *py_key, *py_val;
 		Py_ssize_t pos( 0 );
 		while ( PyDict_Next( obj, &pos, &py_key, &py_val ) )
@@ -249,16 +314,24 @@ namespace pyl
 			V val;
 			if ( !convert( py_val, val ) )
 				return false;
-			mp.emplace( key, val );
+			mapRet.emplace( key, val );
 		}
+
+		// Assign and return
+		mp = std::move( mapRet );
 		return true;
 	}
+
 	// Convert a PyObject to a std::set
 	template<class C>
 	bool convert( PyObject *obj, std::set<C>& s )
 	{
 		if ( !PySet_Check( obj ) )
 			return false;
+
+		// Use this until we succeed
+		std::set<C> setRet;
+
 		PyObject *iter = PyObject_GetIter( obj );
 		PyObject *item = PyIter_Next( iter );
 		while ( item )
@@ -266,11 +339,14 @@ namespace pyl
 			C val;
 			if ( !convert( item, val ) )
 				return false;
-			s.insert( val );
+			setRet.insert( val );
 			item = PyIter_Next( iter );
 		}
+
+		s = std::move( setRet );
 		return true;
 	}
+
 	// Convert a PyObject to a generic container.
 	template<class T, class C>
 	bool convert_list( PyObject *obj, C &container )
@@ -278,13 +354,17 @@ namespace pyl
 		// Must be a list type
 		if ( !PyList_Check( obj ) )
 			return false;
+
+		C cRet;
 		for ( Py_ssize_t i( 0 ); i < PyList_Size( obj ); ++i )
 		{
 			T val;
 			if ( !convert( PyList_GetItem( obj, i ), val ) )
 				return false;
-			container.push_back( std::move( val ) );
+			cRet.push_back( std::move( val ) );
 		}
+
+		container = std::move( cRet );
 		return true;
 	}
 	// Convert a PyObject to a std::list.
@@ -303,6 +383,9 @@ namespace pyl
 	{
 		if ( !PyList_Check( obj ) )
 			return false;
+
+		// I can't really afford to allocate temporary
+		// space here... think of something else
 		Py_ssize_t len = PyList_Size( obj );
 		if ( len > N ) len = N;
 		for ( Py_ssize_t i( 0 ); i < len; ++i )
@@ -322,7 +405,7 @@ namespace pyl
 	}
 
 	// Generic convert function used by others
-	template<class T> bool generic_convert( PyObject *obj,
+	template<class T> bool _generic_convert( PyObject *obj,
 											const std::function<bool( PyObject* )> &is_obj,
 											const std::function<T( PyObject* )> &converter,
 											T &val )
@@ -358,33 +441,54 @@ namespace pyl
 
 	// -------------- PyObject allocators ----------------
 
+	/*! alloc_pyobject \brief Convert some integral type T to a PyLong
+	This will work for any integer based type (int, char, short, size_t, etc.)*/
+	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type = 0>
+	PyObject *alloc_pyobject( T num );
+
+	/*! alloc_pyobject \brief Converts a string to a (bytes) string
+	I may have this convert to unicode instead...*/
+	PyObject *alloc_pyobject( const std::string &str );
+
+	/*! alloc_pyobject \brief Creates a PyByteArray from a std::vector<char>*/
+	PyObject *alloc_pyobject( const std::vector<char> &val, size_t sz );
+
+	/*! alloc_pyobject \brief Creates a PyByteArray from a std::vector<char>*/
+	PyObject *alloc_pyobject( const std::vector<char> &val );
+
+	/*! alloc_pyobject \brief Creates (wide) Pystring from a const char**/
+	PyObject *alloc_pyobject( const char *cstr );
+
+	/*! alloc_pyobject \brief Creates a PyBool from a bool*/
+	PyObject *alloc_pyobject( bool value );
+
+	/*! alloc_pyobject \brief Creates a PyFloat from a double*/
+	PyObject *alloc_pyobject( double num );
+
+	/*! alloc_pyobject \brief Creates a PyFloat from a float*/
+	PyObject *alloc_pyobject( float num );
+
+	/*! alloc_pyobject \brief Creates a PyCapsule for unspecified pointer types*/
+	template <typename T> PyObject * alloc_pyobject( T * ptr );
+
+	/*! alloc_pyobject \brief Creates a PyList from a std::vector<T>*/
+	template<class T> PyObject *alloc_pyobject( const std::vector<T> &container );
+
+	/*! alloc_pyobject \brief Creates a a PyList from a std::list<T>*/
+	template<class T> PyObject *alloc_pyobject( const std::list<T> &container );
+
+	/*! alloc_pyobject \brief Creates a a PyDict from a std::map<K, V>*/
+	template<class K, class V> PyObject *alloc_pyobject( const std::map<K, V> &container );
+
+	/*! alloc_pyobject \brief Creates a PySet from a std::set<C>*/
+	template<class C> PyObject *alloc_pyobject( const std::set<C>& s );
+
 	// Creates a PyObject from any integral type (gets converted to PyLong)
 	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type = 0>
 	PyObject *alloc_pyobject( T num )
 	{
 		return PyLong_FromLong( num );
 	}
-
-	// Creates a (wide) Pystring from a std::string
-	PyObject *alloc_pyobject( const std::string &str );
-
-	// Creates a PyByteArray from a std::vector<char>
-	PyObject *alloc_pyobject( const std::vector<char> &val, size_t sz );
-
-	// Creates a PyByteArray from a std::vector<char>
-	PyObject *alloc_pyobject( const std::vector<char> &val );
-
-	// Creates (wide) Pystring from a const char*
-	PyObject *alloc_pyobject( const char *cstr );
-
-	// Creates a PyBool from a bool
-	PyObject *alloc_pyobject( bool value );
-
-	// Creates a PyFloat from a double
-	PyObject *alloc_pyobject( double num );
-
-	// Creates a PyFloat from a float
-	PyObject *alloc_pyobject( float num );
 
 	// Creates a PyCapsule for unspecified pointer types
 	template <typename T>
@@ -404,13 +508,6 @@ namespace pyl
 
 		return lst;
 	}
-
-	template <typename T> PyObject * alloc_pyobject( T * ptr );
-	template<class T> static PyObject *alloc_list( const T &container );
-	template<class T> PyObject *alloc_pyobject( const std::vector<T> &container );
-	template<class T> PyObject *alloc_pyobject( const std::list<T> &container );
-	template<class T, class K> PyObject *alloc_pyobject( const std::map<T, K> &container );
-	template<class C> PyObject *alloc_pyobject( const std::set<C>& s );
 
 	// Creates a PyList from a std::vector
 	template<class T> PyObject *alloc_pyobject( const std::vector<T> &container )
@@ -450,8 +547,6 @@ namespace pyl
 	}
 
 	// TODO Unordered sets/maps
-
-
 
 	// Defines an exposed class (which is not per instance)
 	class _ExposedClassDef
