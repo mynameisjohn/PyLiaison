@@ -21,107 +21,134 @@
 #include <algorithm>
 #include <fstream>
 
+#include <Python.h>
+#include <structmember.h>
+
 #include "pyliaison.h"
 
-#include "pyl_module.h"
-#include "pyl_misc.h"
-
-namespace pyl 
+namespace pyl
 {
-	Object::Object() {
+	Object::Object() : m_pPyObject( nullptr )
+	{}
 
+	Object::Object( PyObject *obj ) : m_pPyObject( obj )
+	{
+		Py_XINCREF( obj );
 	}
 
-	Object::Object(PyObject *obj) : py_obj(make_pyshared(obj)) {
-	}
-
-	pyl::Object::pyshared_ptr Object::make_pyshared(PyObject *obj) {
-		Py_XINCREF(obj);
-		return pyshared_ptr(obj, [](PyObject *obj) { Py_XDECREF(obj); });
-	}
-
-	Object Object::from_script(const std::string &script_path) {
+	Object::Object( const std::string script_path )
+	{
 		// Get the directory path and file name
-		std::string base_path("."), file_path;
-		size_t last_slash(script_path.rfind("/"));
-		if (last_slash != std::string::npos) {
-			if (last_slash >= script_path.size() - 2)
-				throw pyl::runtime_error("Invalid script path");
-			base_path = script_path.substr(0, last_slash);
-			file_path = script_path.substr(last_slash + 1);
+		std::string base_path( "." ), file_path;
+		size_t last_slash( script_path.rfind( "/" ) );
+		if ( last_slash != std::string::npos )
+		{
+			if ( last_slash >= script_path.size() - 2 )
+				throw runtime_error( "Invalid script path" );
+			base_path = script_path.substr( 0, last_slash );
+			file_path = script_path.substr( last_slash + 1 );
 		}
 		else
 			file_path = script_path;
-		if (file_path.rfind(".py") == file_path.size() - 3)
-			file_path = file_path.substr(0, file_path.size() - 3);
+		if ( file_path.rfind( ".py" ) == file_path.size() - 3 )
+			file_path = file_path.substr( 0, file_path.size() - 3 );
 
-		// Try loading just the file name
-		pyl::Object py_ptr((PyImport_ImportModule(file_path.c_str())));
-		//PyObject *py_ptr;
-		if (py_ptr.get() != nullptr)
-			return std::move(py_ptr);
+		PyObject * pScript = PyImport_ImportModule( file_path.c_str() );
+		if ( pScript )
+		{
+			m_pPyObject = pScript;
+			Py_XINCREF( m_pPyObject );
+		}
 
 		// If we didn't get it, see if the dir path is in PyPath
-		char arr[] = "path";
-		pyl::Object path(PySys_GetObject(arr));
-		std::vector<std::string> curPath;
-		pyl::convert(path.get(), curPath);
+		char arrPath[] = "path";
+		pyl::Object path( PySys_GetObject( arrPath ) );
+		std::set<std::string> curPath;
 
+		pyl::convert( path.get(), curPath );
 		// If it isn't add it to the path and try again
-		if (std::find(curPath.begin(), curPath.end(), base_path) == curPath.end()) {
-			pyunique_ptr pwd(PyUnicode_FromString(base_path.c_str()));
-			PyList_Append(path.get(), pwd.get());
-			return from_script(script_path);
+		if ( std::find( curPath.begin(), curPath.end(), base_path ) == curPath.end() )
+		{
+			Object pwd( PyUnicode_FromString( base_path.c_str() ) );
+			PyList_Append( path.get(), pwd.get() );
 		}
 
-		// If it was in the path and we still couldn't load, there's a problem
+		pScript = PyImport_ImportModule( file_path.c_str() );
+		if ( pScript )
+		{
+			m_pPyObject = pScript;
+			Py_XINCREF( m_pPyObject );
+		}
+
 		print_error();
-		return nullptr;
+		throw runtime_error( "Error locating module" );
 	}
 
-    // Invoke the above for string constructor
-    Object::Object(std::string strScript){
-       *this = pyl::Object::from_script(strScript); 
-    }
-
-	PyObject *Object::load_function(const std::string &name) {
-		PyObject *obj(PyObject_GetAttrString(py_obj.get(), name.c_str()));
-		if (!obj)
-			throw pyl::runtime_error("Failed to find function");
-		return obj;
-	}
-
-	Object Object::call(const std::string name) {
-		pyunique_ptr func(load_function(name));
-		PyObject *ret(PyObject_CallObject(func.get(), 0));
-		if (!ret)
-			throw pyl::runtime_error("Failed to call function");
-		return{ ret };
-	}
-
-	Object Object::get_attr(const std::string &name) {
-		PyObject *obj(PyObject_GetAttrString(py_obj.get(), name.c_str()));
-		if (!obj)
-			throw std::runtime_error("Unable to find attribute '" + name + '\'');
-		return{ obj };
-	}
-
-	bool Object::has_attr(const std::string &name) {
-		try {
-			get_attr(name);
-			return true;
-		}
-		catch ( pyl::runtime_error& ) {
-			return false;
-		}
-	}
-
-	void Object::Reset()
+	Object Object::_call_impl( const std::string strName, PyObject * pArgTup /*= nullptr*/ )
 	{
-		py_obj.reset();
+		// Try to call, clean memory on error
+		Object func;
+		try
+		{
+			// Load function and arguments into unique ptrs
+			func = get_attr( strName );
+
+			// Call object, return result
+			PyObject * pRet = PyObject_CallObject( func.get(), pArgTup );
+			if ( pRet == nullptr )
+				throw pyl::runtime_error( "Failed to call function " + strName );
+			return { pRet };
+		}
+		// Release memory and pass along
+		catch ( pyl::runtime_error e )
+		{
+			PyErr_Print();
+			func.reset();
+			throw e;
+		}
+		return { nullptr };
 	}
 
-	void initialize() {
+	Object Object::call( const std::string strName )
+	{
+		return _call_impl( strName );
+	}
+
+	Object Object::get_attr( const std::string strName )
+	{
+		PyObject *obj( PyObject_GetAttrString( m_pPyObject, strName.c_str() ) );
+		if ( !obj )
+			throw std::runtime_error( "Unable to find attribute '" + strName + '\'' );
+		return { obj };
+	}
+
+	bool Object::has_attr( const std::string strName )
+	{
+		try
+		{
+			get_attr( strName );
+		}
+		catch ( pyl::runtime_error& ) { return false; }
+
+		return true;
+	}
+
+	void Object::reset()
+	{
+		if ( m_pPyObject )
+		{
+			Py_XDECREF( m_pPyObject );
+			m_pPyObject = nullptr;
+		}
+	}
+
+	PyObject * Object::get() const
+	{
+		return m_pPyObject;
+	}
+
+	void initialize()
+	{
 		// Finalize any previous stuff
 		Py_Finalize();
 
@@ -131,101 +158,121 @@ namespace pyl
 		Py_Initialize();
 	}
 
-	void finalize() {
+	void finalize()
+	{
 		Py_Finalize();
 	}
 
-	void clear_error() {
+	void clear_error()
+	{
 		PyErr_Clear();
 	}
 
-	void print_error() {
+	void print_error()
+	{
 		PyErr_Print();
 	}
 
-	void print_object(PyObject *obj) {
-		PyObject_Print(obj, stdout, 0);
+	void print_object( PyObject *obj )
+	{
+		PyObject_Print( obj, stdout, 0 );
 	}
 
 	// Allocation methods
 
-	PyObject *alloc_pyobject(const std::string &str) {
-		return PyBytes_FromString(str.c_str());
+	PyObject *alloc_pyobject( const std::string &str )
+	{
+		return PyBytes_FromString( str.c_str() );
 	}
 
-	PyObject *alloc_pyobject(const std::vector<char> &val, size_t sz) {
-		return PyByteArray_FromStringAndSize(val.data(), sz);
+	PyObject *alloc_pyobject( const std::vector<char> &val, size_t sz )
+	{
+		return PyByteArray_FromStringAndSize( val.data(), sz );
 	}
 
-	PyObject *alloc_pyobject(const std::vector<char> &val) {
-		return alloc_pyobject(val, val.size());
+	PyObject *alloc_pyobject( const std::vector<char> &val )
+	{
+		return alloc_pyobject( val, val.size() );
 	}
 
-	PyObject *alloc_pyobject(const char *cstr) {
-		return PyBytes_FromString(cstr);
+	PyObject *alloc_pyobject( const char *cstr )
+	{
+		return PyBytes_FromString( cstr );
 	}
 
-	PyObject *alloc_pyobject(bool value) {
-		return PyBool_FromLong(value);
+	PyObject *alloc_pyobject( bool value )
+	{
+		return PyBool_FromLong( value );
 	}
 
-	PyObject *alloc_pyobject(double num) {
-		return PyFloat_FromDouble(num);
+	PyObject *alloc_pyobject( double num )
+	{
+		return PyFloat_FromDouble( num );
 	}
 
-	PyObject *alloc_pyobject(float num) {
-		double d_num(num);
-		return PyFloat_FromDouble(d_num);
+	PyObject *alloc_pyobject( float num )
+	{
+		double d_num( num );
+		return PyFloat_FromDouble( d_num );
 	}
 
-	bool is_py_int(PyObject *obj) {
-		return PyLong_Check(obj);
+	bool is_py_int( PyObject *obj )
+	{
+		return PyLong_Check( obj );
 	}
 
-	bool is_py_float(PyObject *obj) {
-		return PyFloat_Check(obj);
+	bool is_py_float( PyObject *obj )
+	{
+		return PyFloat_Check( obj );
 	}
 
-	bool convert(PyObject *obj, std::string &val) {
-		if (PyBytes_Check(obj)) {
-			val = PyBytes_AsString(obj);
+	bool convert( PyObject *obj, std::string &val )
+	{
+		if ( PyBytes_Check( obj ) )
+		{
+			val = PyBytes_AsString( obj );
 			return true;
 		}
-		else if (PyUnicode_Check(obj)) {
-			val = PyUnicode_AsUTF8(obj);
+		else if ( PyUnicode_Check( obj ) )
+		{
+			val = PyUnicode_AsUTF8( obj );
 			return true;
 		}
 		return false;
 	}
 
-	bool convert(PyObject *obj, std::vector<char> &val) {
-		if (!PyByteArray_Check(obj))
+	bool convert( PyObject *obj, std::vector<char> &val )
+	{
+		if ( !PyByteArray_Check( obj ) )
 			return false;
-		if (val.size() < (size_t)PyByteArray_Size(obj))
-			val.resize(PyByteArray_Size(obj));
-		std::copy(PyByteArray_AsString(obj),
-			PyByteArray_AsString(obj) + PyByteArray_Size(obj),
-			val.begin());
+		if ( val.size() < (size_t) PyByteArray_Size( obj ) )
+			val.resize( PyByteArray_Size( obj ) );
+		std::copy( PyByteArray_AsString( obj ),
+				   PyByteArray_AsString( obj ) + PyByteArray_Size( obj ),
+				   val.begin() );
 		return true;
 	}
 
-	bool convert(PyObject *obj, bool &value) {
-		if (obj == Py_False)
+	bool convert( PyObject *obj, bool &value )
+	{
+		if ( obj == Py_False )
 			value = false;
-		else if (obj == Py_True)
+		else if ( obj == Py_True )
 			value = true;
 		else
 			return false;
 		return true;
 	}
 
-	bool convert(PyObject *obj, double &val) {
-		return generic_convert<double>(obj, is_py_float, PyFloat_AsDouble, val);
+	bool convert( PyObject *obj, double &val )
+	{
+		return generic_convert<double>( obj, is_py_float, PyFloat_AsDouble, val );
 	}
 
 	// It's unforunate that this takes so long
-	bool convert(PyObject *obj, float &val) {
-		double d(0);
+	bool convert( PyObject *obj, float &val )
+	{
+		double d( 0 );
 		if ( convert( obj, d ) )
 		{
 			val = (float) d;
@@ -239,31 +286,33 @@ namespace pyl
 		}
 		return false;
 	}
-	
+
 	// If the client knows what to do, let 'em deal with it
-	bool convert(PyObject * obj, pyl::Object& pyObj){
-		pyObj = pyl::Object(obj);
+	bool convert( PyObject * obj, pyl::Object& pyObj )
+	{
+		pyObj = pyl::Object( obj );
 		// I noticed that the incref is needed... not sure why?
-		if (auto ptr = pyObj.get()) {
-			Py_INCREF(ptr);
+		if ( auto ptr = pyObj.get() )
+		{
+			Py_INCREF( ptr );
 			return true;
 		}
 		return false;
 	}
 
 	// We only need one instance of the above, shared by exposed objects
-	/*static*/ int _ExposedClassDef::PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
+	/*static*/ int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
 	{
 		// In the example the first arg isn't a PyObject *, but... idk man
-		_GenericPyClass * realPtr = static_cast<_GenericPyClass *>((void *)self);
+		_GenericPyClass * realPtr = static_cast<_GenericPyClass *>( (void *) self );
 		// The first argument is the capsule object
-		PyObject * c = PyTuple_GetItem(args, 0);
-		
-		if (c)
+		PyObject * c = PyTuple_GetItem( args, 0 );
+
+		if ( c )
 		{// Or at least it better be
-			if (PyCapsule_CheckExact(c))
+			if ( PyCapsule_CheckExact( c ) )
 			{
-				Py_INCREF(c);
+				Py_INCREF( c );
 				realPtr->capsule = c;
 
 				return 0;
@@ -272,22 +321,13 @@ namespace pyl
 
 		return -1;
 	};
-	
-	// The () operator just returns the capsule object
-	/*static*/ PyObject * _ExposedClassDef::PyClsCallFunc( PyObject * co, PyObject * args, PyObject * kw )
-	{
-		_GenericPyClass * pClass = static_cast<_GenericPyClass *>((voidptr_t)co);
-		Py_INCREF( pClass->capsule );
-		return pClass->capsule;
-	}
 
 	_ExposedClassDef::_ExposedClassDef()
 	{
 		// Take care of this now
 		memset( &m_TypeObject, 0, sizeof( PyTypeObject ) );
 		m_TypeObject.ob_base = PyVarObject_HEAD_INIT( NULL, 0 )
-		m_TypeObject.tp_init = (initproc) _ExposedClassDef::PyClsInitFunc;
-		m_TypeObject.tp_call = (ternaryfunc) _ExposedClassDef::PyClsCallFunc;
+			m_TypeObject.tp_init = (initproc) PyClsInitFunc;
 		m_TypeObject.tp_new = PyType_GenericNew;
 		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
 		m_TypeObject.tp_basicsize = sizeof( _GenericPyClass );
@@ -300,42 +340,6 @@ namespace pyl
 	{
 		m_strClassName = strClassName;
 	}
-
-	//_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef& other ) :
-	//	// I see no harm in invoking the default constructor
-	//	_ExposedClassDef( other.m_strClassName )
-	//{
-	//	m_set
-
-	//	// But leave in an unprepared state
-	//	m_TypeObject.tp_name = nullptr;
-	//	m_TypeObject.tp_members = nullptr;
-	//	m_TypeObject.tp_methods = nullptr;
-	//}
-
-	//_ExposedClassDef::_ExposedClassDef( const _ExposedClassDef&& other ) :
-	//	// I see no harm in invoking the above
-	//	_ExposedClassDef( other.m_strClassName )
-	//{
-	//	// But leave in an unprepared state
-	//	m_TypeObject.tp_name = nullptr;
-	//	m_TypeObject.tp_members = nullptr;
-	//	m_TypeObject.tp_methods = nullptr;
-	//}
-
-	//// Same with equals operators
-	//_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef& other )
-	//{
-	//	// Is this legit?
-	//	*this = _ExposedClassDef( other );
-	//	return *this;
-	//}
-
-	//_ExposedClassDef& _ExposedClassDef::operator=( const _ExposedClassDef&& other )
-	//{
-	//	*this = _ExposedClassDef( other );
-	//	return *this;
-	//}
 
 	// This has to happen at a time when these
 	// definitions will no longer move
@@ -351,7 +355,7 @@ namespace pyl
 
 	bool _ExposedClassDef::IsPrepared() const
 	{
-		return (bool) (m_TypeObject.tp_name && m_TypeObject.tp_members && m_TypeObject.tp_methods);
+		return (bool) ( m_TypeObject.tp_name && m_TypeObject.tp_members && m_TypeObject.tp_methods );
 	}
 
 	bool _ExposedClassDef::AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs )
@@ -390,8 +394,9 @@ namespace pyl
 			return false;
 		}
 
-		char * pName = (char *)paInsert.first->c_str();
-		char * pDocs = (char *) (docs.empty() ? nullptr : m_liMemberDocs.insert( m_liMemberDocs.end(), docs )->c_str());
+		char * pName = (char *) paInsert.first->c_str();
+		char * pDocs = (char *) ( docs.empty() ? nullptr : m_liMemberDocs.insert( m_liMemberDocs.end(), docs )->c_str() );
+
 		m_ntMemberDefs.push_back( { pName, type, offset, flags, pDocs } );
 		return true;
 	}
@@ -413,105 +418,38 @@ namespace pyl
 			return;
 
 		m_strClassName = strName;
+
 	}
-
-	//// Add a method, preserving the null terminator and storing strings where they won't be destroyed
-	//void MethodDefinitions::AddMethod(std::string name, PyCFunction fnPtr, int flags, std::string docs)
-	//{
-	//	// If a method with this name has already been declared, throw an error
-	//	if (std::find(MethodNames.begin(), MethodNames.end(), name) != MethodNames.end())
-	//	{
-	//		// Alternatively, this could actually overwrite the pre-existing method. 
-	//		throw runtime_error("Error: Attempting to overwrite exisiting exposed python function");
-	//	}
-
-	//	// We need the names in a list so their references stay valid
-	//	MethodNames.push_back(name);
-	//	const char * namePtr = MethodNames.back().c_str();
-
-	//	PyMethodDef method{ 0 };
-
-	//	if (docs.empty())
-	//		method = { namePtr, fnPtr, flags, NULL };
-	//	else {
-	//		MethodDocs.push_back(std::string(docs));
-	//		method = { namePtr, fnPtr, flags, MethodDocs.back().c_str() };
-	//	}
-
-	//	m_ntBuf.push_back( method );
-	//}
-
-	//// These by default get the c_ptr capsule object
-	//MemberDefinitions::MemberDefinitions()
-	//{
-	//	MemberNames.push_back("c_ptr");
-	//	MemberDocs.push_back("pointer to a c object");
-	//	PyMemberDef d = { (char *)MemberNames.back().c_str(), T_OBJECT_EX, offsetof(_GenericPyClass, capsule), 0, (char *)MemberDocs.back().c_str() };
-	//	m_ntBuf.push_back( d );
-	//}
-
-	//// Add a member, preserving the null terminator and storing strings where they won't be destroyed
-	//void MemberDefinitions::AddMember(std::string name, int type, int offset, int flags, std::string docs)
-	//{
-	//	// If a member with this name has already been declared, throw an error
-	//	if (std::find(MemberNames.begin(), MemberNames.end(), name) != MemberNames.end())
-	//	{
-	//		// Alternatively, this could actually overwrite the pre-existing member. 
-	//		throw runtime_error("Error: Attempting to overwrite exisiting exposed python class member");
-	//	}
-
-	//	// We need the names in a list so their references stay valid
-	//	MemberNames.push_back(name);
-	//	char * namePtr = (char *)MemberNames.back().c_str();
-
-	//	PyMemberDef member{ 0 };
-	//	
-	//	if (docs.empty())
-	//		member = { namePtr, type, offset, flags, NULL };
-	//	else {
-	//		MemberDocs.push_back(std::string(docs));
-	//		member = { namePtr, type, offset, flags, (char *)MemberDocs.back().c_str() };
-	//	}
-
-	//	_insert(member);
-	//}
 
 	int RunCmd( std::string cmd )
 	{
 		return PyRun_SimpleString( cmd.c_str() );
 	}
 
-	int RunFile(std::string file)
+	int RunFile( std::string file )
 	{
-		std::ifstream in(file);
-		return RunCmd({ (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>() });
+		std::ifstream in( file );
+		return RunCmd( { ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() } );
 	}
 
-	int GetTotalRefCount()
+	int get_total_ref_count()
 	{
-		PyObject* refCount = PyObject_CallObject(PySys_GetObject((char*)"gettotalrefcount"), NULL);
-		if (!refCount) return -1;
-		int ret = _PyLong_AsInt(refCount);
-		Py_DECREF(refCount);
+		PyObject* refCount = PyObject_CallObject( PySys_GetObject( ( char* )"gettotalrefcount" ), NULL );
+		if ( !refCount ) return -1;
+		int ret = _PyLong_AsInt( refCount );
+		Py_DECREF( refCount );
 		return ret;
 	}
 
 	// Static module map map declaration
 	std::map<std::string, ModuleDef> ModuleDef::s_mapPyModules;
 
-	// This should never be called
-	ModuleDef::ModuleDef()
-	{
-		//assert( false && "Please don't construct Modules on your own, they won't be visible to the interpreter" );
-	}
-
 	// Name and doc constructor
 	ModuleDef::ModuleDef( const std::string& moduleName, const std::string& moduleDocs ) :
 		m_strModDocs( moduleDocs ),
 		m_strModName( moduleName ),
-		m_fnCustomInit( [] ( Object o ) {} )
-	{
-	}
+		m_fnCustomInit( []( Object o ) {} )
+	{}
 
 	// This is implemented here just to avoid putting these STL calls in the header
 	bool ModuleDef::registerClass_impl( const std::type_index T, const std::string& className )
@@ -531,12 +469,18 @@ namespace pyl
 				return m_mapExposedClasses.emplace( T, clsDef ).second;
 			}
 		}
-		
+
 		return m_mapExposedClasses.emplace( T, strClassName ).second;
 	}
 
+	void checkError( int ret, std::string strErrMsg )
+	{
+		if ( ret )
+			throw pyl::runtime_error( strErrMsg );
+	}
+
 	// Implementation of expose object function that doesn't need to be in this header file
-	int ModuleDef::exposeObject_impl( const std::type_index T, const voidptr_t instance, const std::string& name, PyObject * mod )
+	int ModuleDef::exposeObject_impl( const std::type_index T, void * pInstance, const std::string& strName, PyObject * pModule )
 	{
 		// If we haven't declared the class, we can't expose it
 		auto itExpCls = m_mapExposedClasses.find( T );
@@ -547,32 +491,25 @@ namespace pyl
 		_ExposedClassDef& expCls = itExpCls->second;
 
 		// If a module wasn't specified, just do main
-		mod = mod ? mod : PyImport_ImportModule( "__main__" );
-		if ( mod == nullptr )
+		pModule = pModule ? pModule : PyImport_ImportModule( "__main__" );
+		if ( pModule == nullptr )
 			return -1;
 
 		// Allocate a new object instance given the PyTypeObject
 		PyObject* newPyObject = _PyObject_New( expCls.GetTypeObject() );
 
 		// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
-		PyObject* capsule = PyCapsule_New( instance, NULL, NULL );
+		PyObject* capsule = PyCapsule_New( pInstance, NULL, NULL );
 
 		// Set the c_ptr member variable (which better exist) to the capsule
-		static_cast<_ExposedClassDef::_GenericPyClass *>((voidptr_t) newPyObject)->capsule = capsule;
+		static_cast<_GenericPyClass *>( (void *) newPyObject )->capsule = capsule;
 
 		// Make a variable in the module out of the new py object
-		int success = PyObject_SetAttrString( mod, name.c_str(), newPyObject );
-		if ( success != 0 )
-		{
-			// TODO make some kind of exception that this can raise
-			return success;
-		}
+		checkError( PyObject_SetAttrString( pModule, strName.c_str(), newPyObject ), "Unable to create variable in module" );
 
 		// decref and return
-		Py_DECREF( mod );
+		Py_DECREF( pModule );
 		Py_DECREF( newPyObject );
-
-		return success;
 	}
 
 	// Create the function object invoked when this module is imported
@@ -580,7 +517,7 @@ namespace pyl
 	{
 		// Declare the init function, which gets called on import and returns a PyObject *
 		// that represent the module itself (I hate capture this, but it felt necessary)
-		m_fnModInit = [this] ()
+		m_fnModInit = [this]()
 		{
 			// The MethodDef contains all functions defined in C++ code,
 			// including those called into by exposed classes
@@ -618,7 +555,7 @@ namespace pyl
 			}
 
 			// If creating the module failed for whatever reason
-			return (PyObject *)nullptr;
+			return ( PyObject * )nullptr;
 		};
 	}
 
@@ -696,13 +633,39 @@ namespace pyl
 	{
 		PyObject * pModule = PyImport_ImportModule( modName.c_str() );
 		if ( pModule )
-			return{ pModule };
+			return { pModule };
 
-		return{ nullptr };
+		return { nullptr };
 	}
 
 	Object GetMainModule()
 	{
 		return GetModule( "__main__" );
+	}
+
+	void _PyObjectDeleter::operator()( PyObject * pObj )
+	{
+		Py_XDECREF( pObj );
+	}
+
+	std::string get_tabs( int n )
+	{
+		// Four spaces...
+		const std::string py_tab = "    ";
+		std::string ret;
+		for ( int i = 0; i < n; i++ )
+			ret += py_tab;
+		return ret;
+	}
+
+	_PyFunc _getPyFunc_Case4( std::function<void()> fn )
+	{
+		_PyFunc pFn = [fn]( PyObject * s, PyObject * a )
+		{
+			fn();
+			Py_INCREF( Py_None );
+			return Py_None;
+		};
+		return pFn;
 	}
 }
