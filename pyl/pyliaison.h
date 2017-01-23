@@ -46,9 +46,6 @@ namespace pyl
 		runtime_error( std::string strMessage ) : std::runtime_error( strMessage ) {}
 	};
 
-	// Used to get tabs for python code strings
-	std::string get_tabs( int n );
-
 	// Invoke some callable object with a std::tuple
 	template<typename Func, typename Tup, std::size_t... index>
 	decltype( auto ) _invoke_helper( Func&& func, Tup&& tup, std::index_sequence<index...> )
@@ -135,6 +132,13 @@ namespace pyl
 
 	// Invoke the standard print function on a PyObject
 	void print_object( PyObject *obj );
+
+	int run_cmd( std::string strCMD );
+
+	int run_file( std::string strCMD );
+
+	// Used to get tabs for python code strings
+	std::string get_tabs( int n );
 
 	// ------------ Conversion functions ------------
 
@@ -546,7 +550,12 @@ namespace pyl
 		return pSet;
 	}
 
+	bool is_py_float( PyObject *obj );
+	bool is_py_int( PyObject *obj );
+
 	// TODO Unordered sets/maps
+
+	// -------------- Exposed Class Definition ----------------
 
 	// Defines an exposed class (which is not per instance)
 	class _ExposedClassDef
@@ -594,7 +603,8 @@ namespace pyl
 	// member holding a pointer to the original object
 	struct _GenericPyClass { PyObject_HEAD PyObject * capsule { nullptr }; };
 
-	// TODO more doxygen!
+	// ------------------- pyl::Object ---------------------
+
 	// This is the original pywrapper::object... quite the beast
 	/**
 	* \class Object
@@ -859,6 +869,8 @@ namespace pyl
 		return pFn;
 	}
 
+	// -------------- pyl Modules ----------------
+
 	/********************************************//*!
 	pyl::ModuleDef
 	\brief A Python module definition, encapsulated in a C++ class
@@ -870,9 +882,10 @@ namespace pyl
 	class ModuleDef
 	{
 	private:
-		static std::map<std::string, ModuleDef> s_mapPyModules;
+		using ModuleMap = std::map<std::string, ModuleDef>;
+		static ModuleMap s_mapPyModules; /*!< Static map of declared pyl modules*/
 
-		/*!
+		/*! 
 		\brief Construct module from name and docs
 
 		The Module constructor is private because any modules that aren't constructed
@@ -883,18 +896,19 @@ namespace pyl
 
 		// Private members
 
-		std::map<std::type_index, _ExposedClassDef> m_mapExposedClasses;	/*!< A map of exposable C++ class types */
-		std::list<_PyFunc> m_liExposedFunctions;							/*!< A list of exposed c++ functions */
+		using ExposedTypeMap = std::map<std::type_index, _ExposedClassDef>;
+		ExposedTypeMap m_mapExposedClasses;								/*!< A map of exposable C++ class types */
+		std::list<_PyFunc> m_liExposedFunctions;						/*!< A list of exposed c++ functions */
 
-		_MethodDefs m_ntMethodDefs;									/*!< A null terminated MethodDef buffer */
-		std::list<std::string> m_liMethodDocs;
-		std::set<std::string> m_setUsedMethodNames;
+		_MethodDefs m_ntMethodDefs;										/*!< A null terminated MethodDef buffer */
+		std::list<std::string> m_liMethodDocs;							/*!< Reference safe storage for doc strings*/
+		std::set<std::string> m_setUsedMethodNames;						/*!< Reference safe storage for method names*/
 
 		PyModuleDef m_pyModDef;											/*!< The actual Python module def */
 		std::string m_strModDocs;										/*!< The string containing module docs */
 		std::string m_strModName;										/*!< The string containing the module name */
 		std::function<PyObject *( )> m_fnModInit;						/*!< Function called on import that creates the module*/
-		std::function<void( Object )> m_fnCustomInit;
+		std::function<void( Object )> m_fnCustomInit;					/*!< Optional function called when module is imported*/
 
 		// Sets up m_fnModInit
 		void createFnObject();
@@ -940,7 +954,7 @@ namespace pyl
 		template <typename tag, class C>
 		bool addMemFunction( const std::string methodName, const _PyFunc pFn, const int methodFlags, const std::string docs )
 		{
-			auto it = m_mapExposedClasses.find( typeid( C ) );
+			ExposedTypeMap::iterator it = m_mapExposedClasses.find( typeid( C ) );
 			if ( it == m_mapExposedClasses.end() )
 				return false;
 
@@ -965,6 +979,19 @@ namespace pyl
 		// Functions for registering non-member functions
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! RegisterFunction
+		\brief Register some R methodName(Args...)
+
+		\tparam tag An undefined type used internally
+		\tparam R The return type
+		\tparam Args The variadic type containing all function arguments
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some non-member function that would be invoked like
+		R returnedVal = methodName(Args...);*/
 		template <typename tag, typename R, typename ... Args>
 		bool RegisterFunction( std::string methodName, std::function<R( Args... )> fn, std::string docs = "" )
 		{
@@ -973,6 +1000,18 @@ namespace pyl
 			return addFunction<tag>( pFn, methodName, METH_VARARGS, docs );
 		}
 
+		/*! RegisterFunction
+		\brief Register some void methodName(Args...)
+
+		\tparam tag An undefined type used internally
+		\tparam Args The variadic type containing all function arguments
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some void non-member function that would be invoked like
+		methodName(Args...);*/
 		template <typename tag, typename ... Args>
 		bool RegisterFunction( const std::string methodName, const std::function<void( Args... )> fn, const std::string docs = "" )
 		{
@@ -981,6 +1020,18 @@ namespace pyl
 			return addFunction<tag>( pFn, methodName, METH_VARARGS, docs );
 		}
 
+		/*! RegisterFunction
+		\brief Register some void methodName(Args...)
+
+		\tparam tag An undefined type used internally
+		\tparam R The return type
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some non-member function that would be invoked like
+		R returnedVal = methodName();*/
 		template <typename tag, typename R>
 		bool RegisterFunction( std::string methodName, const std::function<R()> fn, const std::string docs = "" )
 		{
@@ -989,6 +1040,17 @@ namespace pyl
 			return addFunction<tag>( pFn, methodName, METH_NOARGS, docs );
 		}
 
+		/*! RegisterFunction
+		\brief Register some void methodName(Args...)
+
+		\tparam tag An undefined type used internally
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some non-member function that would be invoked like
+		methodName();*/
 		template <typename tag>
 		bool RegisterFunction( const std::string methodName, const std::function<void()> fn, const std::string docs = "" )
 		{
@@ -997,11 +1059,26 @@ namespace pyl
 			return addFunction<tag>( pFn, methodName, METH_NOARGS, docs );
 		}
 
-
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Functions for registering C++ class member functions
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! RegisterMemFunction
+		\brief Register some R C::methodName(Args...)
+
+		\tparam C The C++ class that this function is a member of
+		\tparam tag An undefined type used internally
+		\tparam R The return type
+		\tparam Args The variadic type containing all function arguments
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some member function of class C that would be invoked like
+		C instance;
+		...
+		R returnedVal = c.methodName(Args...);*/
 		template <typename C, typename tag, typename R, typename ... Args,
 			typename std::enable_if<sizeof...( Args ) != 1, int>::type = 0>
 			bool RegisterMemFunction( const std::string methodName, const std::function<R( Args... )> fn, const std::string docs = "" )
@@ -1010,6 +1087,21 @@ namespace pyl
 			return addMemFunction<tag, C>( methodName, pFn, METH_VARARGS, docs );
 		}
 
+		/*! RegisterMemFunction
+		\brief Register some void C::methodName(Args...)
+
+		\tparam C The C++ class that this function is a member of
+		\tparam tag An undefined type used internally
+		\tparam Args The variadic type containing all function arguments
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some member function of class C that would be invoked like
+		C instance;
+		...
+		c.methodName(Args...);*/
 		template <typename C, typename tag, typename ... Args>
 		bool RegisterMemFunction( const std::string methodName, std::function<void( Args... )> fn, const std::string docs = "" )
 		{
@@ -1017,6 +1109,21 @@ namespace pyl
 			return addMemFunction<tag, C>( methodName, pFn, METH_VARARGS, docs );
 		}
 
+		/*! RegisterMemFunction
+		\brief Register some void C::methodName(Args...)
+
+		\tparam C The C++ class that this function is a member of
+		\tparam tag An undefined type used internally
+		\tparam R The return type
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+
+		Use this function to register some member function of class C that would be invoked like
+		C instance;
+		...
+		R returnedVal = c.methodName();*/
 		template <typename C, typename tag, typename R>
 		bool RegisterMemFunction( const std::string methodName, std::function<R( C * )> fn, const std::string docs = "" )
 		{
@@ -1024,6 +1131,20 @@ namespace pyl
 			return addMemFunction<tag, C>( methodName, pFn, METH_NOARGS, docs );
 		}
 
+		/*! RegisterMemFunction
+		\brief Register some void C::methodName()
+		\tparam C The C++ class that this function is a member of
+		\tparam tag An undefined type used internally
+
+		\param[in] methodName The name of the function as seen by Python
+		\param[in] fn A std::function object wrapping the function
+		\param[in] docs The optional documentation for the function, as seen by Python
+		\param[out] success An int indicating the success of the operation, should be 0
+
+		Use this function to register some member function of class C that would be invoked like
+		C instance;
+		...
+		c.methodName();*/
 		template <typename C, typename tag>
 		bool RegisterMemFunction( const std::string methodName, const std::function<void( C * )> fn, const std::string docs = "" )
 		{
@@ -1031,28 +1152,58 @@ namespace pyl
 			return addMemFunction<tag, C>( methodName, pFn, METH_NOARGS, docs );
 		}
 
-
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Functions for registering C++ types with the module
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! RegisterClass
+		\brief Register a C++ type as a python type in this module
+		\tparam C The type of the C++ object you'd like to register
+
+		\param[in] className The name of the type you're exposing, as seen by Python
+
+		Use this function to register a C++ type as a type inside this module. This function
+		creates a class definition for the desired C++ type and declares it as a class within the module.
+		Because it modifies the module it must be called prior to import.*/
 		template <class C>
 		bool RegisterClass( std::string className )
 		{
 			return registerClass_impl( typeid( C ), className );
 		}
 
+		/*! RegisterClass
+		\brief Register a C++ type C that inherits from type P as a python type in this module
+		\tparam C The type of the C++ object you'd like to register
+		\tparam P The parent type of C - instances of C will inherit the method definitions of P
+
+		\param[in] className The name of the type you're exposing, as seen by Python
+		\param[in] pParnetClassMod A pointer to the module containing the parent class
+
+		Use this function when exposing a subclass of an already
+		exposed type. Instances of this class will receive the method definitions from
+		type P, provided it has been exposed. */
 		template <class C, class P>
 		bool RegisterClass( std::string className, const ModuleDef * const pParentClassMod )
 		{
 			return registerClass_impl( typeid( C ), typeid( P ), className, pParentClassMod );
 		}
 
-
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Functions for exposing existing C++ class instances whose types are declared to in the module
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! Expose_Object
+		\brief Expose an existing instance of class C
+		\tparam C The type of the C++ object you'd like to expose
+
+		\param[in] instance The address of the object being exposed
+		\param[in] name The name of the object as seen by Python
+		\param[in] mod The python module you'd like to have the instance live in (i.e the main module)
+
+		Use this function to expose an existing C++ class instance into some python module, provided that the
+		type has been declared inside this module. The pointer to the instance must remain valid for as long
+		as you expect to be able to use this object, and any calls made to this object in pythono will be
+		made by this instance*/
 		template <class C>
 		int Expose_Object( C * instance, const std::string name, PyObject * mod = nullptr )
 		{
@@ -1069,8 +1220,26 @@ namespace pyl
 		// Innocent functions
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		/*! GetModuleDef
+		\brief Retreive a pointer to an existing pyl::Module definition
+
+		\param[in] moduleName The name of the module you'd like to retreive
+		\param[out] pModule A pointer to the module you've requested, returns nullptr if not found
+
+		Use this function to get a pointer to a previously created module definition. If you plan on
+		modifying the definition you must do it prior to initializing the interpreter*/
 		static ModuleDef * GetModuleDef( const std::string moduleName );
 
+		/*! Create
+		\brief Create a new pyl::Module object
+
+		\param[in] moduleName The name of the module you'd like to create
+		\param[in] moduleName The optional docString of the module, as seen by Python
+		\param[out] pModule A pointer to the module you've just greated, nullptr if something went wrong
+
+		Use this function to get create a new Python module (meaning it must be called prior to initializing the interpreter.)
+		The module will be available to to the interpreter under the name moduleName, and if you provide a documentation string
+		then that will be available to the interpreter via the __help__ function (?)*/
 		template <typename tag>
 		static ModuleDef * Create( const std::string moduleName, const std::string moduleDocs = "" )
 		{
@@ -1094,32 +1263,67 @@ namespace pyl
 			return &mod;
 		}
 
+		/*! AsObject
+		\brief Get the Python module as a pyl::Object
+
+		\param[out] pylObject The module object as a pyl::Object (compares true to nullptr if something went wrong)
+
+		Use this function to get a module as a pyl::Object. Once you have it as an object, you can invoke functions like
+		call_function or get_attr to access the module from C++ code. Note that this is different from having a handle
+		to the module definition; this is the real PyObject, owning references to all objects exposed within the module
+		and retreived by calling PyImport_ImportModule directly*/
 		Object AsObject() const;
 
-		static int InitAllModules();
+		/*! SetCustomModuleInit
+		\brief Set a custom initialization function to be called when the module is created
 
+		Modules are created when the interpreter starts, and if this function is set it will be called with
+		the created module as a pyl::Object. This allows data to be exposed into the module that may not
+		be known at compile time, like specific variables or user input*/
 		void SetCustomModuleInit( std::function<void( Object )> fnInit );
 
 		// Don't ever call this... it isn't even implemented, but some STL containers demand that it exists
 		ModuleDef() = default;
+
+		/*! InitAllModules
+		\brief Initialize all modules in the internal module map
+
+		This function invokes Module::prepareClasses() on every function in the internal module map, which bakes any
+		existing class definitions and creates the corresponding type objects inside this modules Python representation.
+		This function should only be called once before the interpreter is initialized, and should not be called again
+		until the interpreter has been shut down.*/
+		static int InitAllModules();
 	};
 
+	/*! InitAllModules \brief Returns the main module as a pyl::Object*/
 	Object GetMainModule();
+
+	/*! InitAllModules \brief Returns the module with name modNameas a pyl::Object
+	Throws a runtime_error if the module is not found. */
 	Object GetModule( std::string modName );
 
 #define S1(x) #x
 #define S2(x) S1(x)
 
-#define CreateMod(strModName)\
+/*! pylCreateMod \brief Macro to make declaring a module easier
+Invoked as pylCreateMod("MyModName");*/
+#define pylCreateMod(strModName)\
 	pyl::ModuleDef::Create<struct __st_##strModName>(#strModName)
 
-#define CreateModWithDocs(strModName, strModDocs)\
+/*! pylCreateModWithDocs \brief Macro to declare module with doc string
+Like pylCreateMod but with second doc string argument*/
+#define pylCreateModWithDocs(strModName, strModDocs)\
 	pyl::ModuleDef::Create<struct __st_#strModName>(strModName, strModDocs)
 
+/*! pylAddFnToMod \brief Macro to add function F to module M
+This can get cumbersome otherwise...*/
 #define AddFnToMod(M, F)\
 	M->RegisterFunction<struct __st_fn##F>(#F, pyl::_make_function(F))
 
-#define AddMemFnToMod(M, C, F, R, ...)\
+/*! pylAddMemFnToMod \brief Macro to add function a member function F of class C to module M
+Because of all this template hackery, some compilers will complain unless this is super
+specific. I'm sure there's a better way...*/
+#define pylAddMemFnToMod(M, C, F, R, ...)\
 	std::function<R(C *, ##__VA_ARGS__)> fn##F = &C::F;\
 	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, fn##F)
 }

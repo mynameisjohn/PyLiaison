@@ -28,6 +28,321 @@
 
 namespace pyl
 {
+	// ----------------- Engine -----------------
+
+	static bool _s_bIsInitialized = false;
+	void initialize()
+	{
+		if ( _s_bIsInitialized == false )
+		{
+			// Finalize any previous stuff
+			finalize();
+
+			ModuleDef::InitAllModules();
+
+			// Startup python
+			Py_Initialize();
+			_s_bIsInitialized = true;
+		}
+	}
+
+	void finalize()
+	{
+		if ( _s_bIsInitialized )
+		{
+			Py_Finalize();
+			_s_bIsInitialized = false;
+		}
+	}
+
+	bool isInitialized()
+	{
+		return _s_bIsInitialized;
+	}
+
+
+	// ----------------- Utility -----------------
+
+	void clear_error()
+	{
+		PyErr_Clear();
+	}
+
+	void print_error()
+	{
+		PyErr_Print();
+	}
+
+	void print_object( PyObject *obj )
+	{
+		PyObject_Print( obj, stdout, 0 );
+	}
+
+	int run_cmd( std::string cmd )
+	{
+		return PyRun_SimpleString( cmd.c_str() );
+	}
+
+	int run_file( std::string file )
+	{
+		std::ifstream in( file );
+		return run_cmd( { ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() } );
+	}
+
+	int get_total_ref_count()
+	{
+		PyObject* refCount = PyObject_CallObject( PySys_GetObject( ( char* )"gettotalrefcount" ), NULL );
+		if ( !refCount ) return -1;
+		int ret = _PyLong_AsInt( refCount );
+		Py_DECREF( refCount );
+		return ret;
+	}
+	
+	std::string get_tabs( int n )
+	{
+		// Four spaces...
+		const std::string py_tab = "    ";
+		std::string ret;
+		for ( int i = 0; i < n; i++ )
+			ret += py_tab;
+		return ret;
+	}
+
+
+	// ------------ Conversion functions ------------
+
+	bool convert( PyObject *obj, std::string &val )
+	{
+		if ( PyBytes_Check( obj ) )
+		{
+			val = PyBytes_AsString( obj );
+			return true;
+		}
+		else if ( PyUnicode_Check( obj ) )
+		{
+			val = PyUnicode_AsUTF8( obj );
+			return true;
+		}
+		return false;
+	}
+
+	bool convert( PyObject *obj, std::vector<char> &val )
+	{
+		if ( !PyByteArray_Check( obj ) )
+			return false;
+		if ( val.size() < (size_t) PyByteArray_Size( obj ) )
+			val.resize( PyByteArray_Size( obj ) );
+		std::copy( PyByteArray_AsString( obj ),
+				   PyByteArray_AsString( obj ) + PyByteArray_Size( obj ),
+				   val.begin() );
+		return true;
+	}
+
+	bool convert( PyObject *obj, bool &value )
+	{
+		if ( obj == Py_False )
+			value = false;
+		else if ( obj == Py_True )
+			value = true;
+		else
+			return false;
+		return true;
+	}
+
+	bool convert( PyObject *obj, double &val )
+	{
+		return _generic_convert<double>( obj, is_py_float, PyFloat_AsDouble, val );
+	}
+
+	// It's unforunate that this takes so long
+	bool convert( PyObject *obj, float &val )
+	{
+		double d( 0 );
+		if ( convert( obj, d ) )
+		{
+			val = (float) d;
+			return true;
+		}
+		int i( 0 );
+		if ( convert( obj, i ) )
+		{
+			val = (float) i;
+			return true;
+		}
+		return false;
+	}
+
+
+	// ------------------ PyObject allocators --------------------
+
+	PyObject *alloc_pyobject( const std::string &str )
+	{
+		return PyBytes_FromString( str.c_str() );
+	}
+
+	PyObject *alloc_pyobject( const std::vector<char> &val, size_t sz )
+	{
+		return PyByteArray_FromStringAndSize( val.data(), sz );
+	}
+
+	PyObject *alloc_pyobject( const std::vector<char> &val )
+	{
+		return alloc_pyobject( val, val.size() );
+	}
+
+	PyObject *alloc_pyobject( const char *cstr )
+	{
+		return PyBytes_FromString( cstr );
+	}
+
+	PyObject *alloc_pyobject( bool value )
+	{
+		return PyBool_FromLong( value );
+	}
+
+	PyObject *alloc_pyobject( double num )
+	{
+		return PyFloat_FromDouble( num );
+	}
+
+	PyObject *alloc_pyobject( float num )
+	{
+		double d_num( num );
+		return PyFloat_FromDouble( d_num );
+	}
+
+	bool is_py_int( PyObject *obj )
+	{
+		return PyLong_Check( obj );
+	}
+
+	bool is_py_float( PyObject *obj )
+	{
+		return PyFloat_Check( obj );
+	}
+
+	// If the client knows what to do, let 'em deal with it
+	bool convert( PyObject * obj, pyl::Object& pyObj )
+	{
+		pyObj = pyl::Object( obj );
+		// I noticed that the incref is needed... not sure why?
+		if ( PyObject * pObj = pyObj.get() )
+		{
+			Py_INCREF( pObj );
+			return true;
+		}
+		return false;
+	}
+
+
+	// -------------- Exposed Class Definition ----------------
+
+	_ExposedClassDef::_ExposedClassDef()
+	{
+		// Take care of this now
+		memset( &m_TypeObject, 0, sizeof( PyTypeObject ) );
+		m_TypeObject.ob_base = PyVarObject_HEAD_INIT( NULL, 0 )
+			m_TypeObject.tp_init = (initproc) PyClsInitFunc;
+		m_TypeObject.tp_new = PyType_GenericNew;
+		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+		m_TypeObject.tp_basicsize = sizeof( _GenericPyClass );
+	}
+
+
+	// Constructor for exposed classes, sets up type object
+	_ExposedClassDef::_ExposedClassDef( std::string strClassName ) :
+		_ExposedClassDef()
+	{
+		m_strClassName = strClassName;
+	}
+
+	// This has to happen at a time when these
+	// definitions will no longer move
+	void _ExposedClassDef::Prepare()
+	{
+		AddMember( "c_ptr", T_OBJECT_EX, offsetof( _GenericPyClass, capsule ), 0, "pointer to the underlying c object" );
+
+		// Assing the pointers
+		m_TypeObject.tp_name = m_strClassName.c_str();
+		m_TypeObject.tp_members = (PyMemberDef *) m_ntMemberDefs.data();
+		m_TypeObject.tp_methods = (PyMethodDef *) m_ntMethodDefs.data();
+	}
+
+	bool _ExposedClassDef::IsPrepared() const
+	{
+		return (bool) ( m_TypeObject.tp_name && m_TypeObject.tp_members && m_TypeObject.tp_methods );
+	}
+
+	bool _ExposedClassDef::AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs )
+	{
+		if ( strMethodName.empty() )
+		{
+			throw std::runtime_error( "Error adding method " + strMethodName );
+			return false;
+		}
+
+		auto paInsert = m_setUsedMethodNames.insert( strMethodName );
+		if ( paInsert.second == false )
+		{
+			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
+			return false;
+		}
+
+		const char * pName = paInsert.first->c_str();
+		const char * pDocs = docs.empty() ? nullptr : m_liMethodDocs.insert( m_liMethodDocs.end(), docs )->c_str();
+		m_ntMethodDefs.push_back( { pName, fnPtr, flags, pDocs } );
+		return true;
+	}
+
+	bool _ExposedClassDef::AddMember( std::string strMemberName, int type, int offset, int flags, std::string docs )
+	{
+		if ( strMemberName.empty() )
+		{
+			throw std::runtime_error( "Error adding member " + strMemberName );
+			return false;
+		}
+
+		auto paInsert = m_setUsedMemberNames.insert( strMemberName );
+		if ( paInsert.second == false )
+		{
+			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
+			return false;
+		}
+
+		char * pName = (char *) paInsert.first->c_str();
+		char * pDocs = (char *) ( docs.empty() ? nullptr : m_liMemberDocs.insert( m_liMemberDocs.end(), docs )->c_str() );
+
+		m_ntMemberDefs.push_back( { pName, type, offset, flags, pDocs } );
+		return true;
+	}
+
+	PyTypeObject * _ExposedClassDef::GetTypeObject() const
+	{
+		return (PyTypeObject *) &m_TypeObject;
+	}
+
+	const char * _ExposedClassDef::GetName() const
+	{
+		return m_strClassName.c_str();
+	}
+
+	void _ExposedClassDef::SetName( std::string strName )
+	{
+		// We can't do this if we're been prepared
+		if ( IsPrepared() )
+			return;
+
+		m_strClassName = strName;
+	}
+
+
+	// ------------------- pyl::Object ---------------------
+
+	void _PyObjectDeleter::operator()( PyObject * pObj )
+	{
+		Py_XDECREF( pObj );
+	}
+
 	Object::Object() : m_pPyObject( nullptr )
 	{}
 
@@ -147,159 +462,6 @@ namespace pyl
 		return m_pPyObject;
 	}
 
-	void initialize()
-	{
-		// Finalize any previous stuff
-		Py_Finalize();
-
-		ModuleDef::InitAllModules();
-
-		// Startup python
-		Py_Initialize();
-	}
-
-	void finalize()
-	{
-		Py_Finalize();
-	}
-
-	void clear_error()
-	{
-		PyErr_Clear();
-	}
-
-	void print_error()
-	{
-		PyErr_Print();
-	}
-
-	void print_object( PyObject *obj )
-	{
-		PyObject_Print( obj, stdout, 0 );
-	}
-
-	// Allocation methods
-
-	PyObject *alloc_pyobject( const std::string &str )
-	{
-		return PyBytes_FromString( str.c_str() );
-	}
-
-	PyObject *alloc_pyobject( const std::vector<char> &val, size_t sz )
-	{
-		return PyByteArray_FromStringAndSize( val.data(), sz );
-	}
-
-	PyObject *alloc_pyobject( const std::vector<char> &val )
-	{
-		return alloc_pyobject( val, val.size() );
-	}
-
-	PyObject *alloc_pyobject( const char *cstr )
-	{
-		return PyBytes_FromString( cstr );
-	}
-
-	PyObject *alloc_pyobject( bool value )
-	{
-		return PyBool_FromLong( value );
-	}
-
-	PyObject *alloc_pyobject( double num )
-	{
-		return PyFloat_FromDouble( num );
-	}
-
-	PyObject *alloc_pyobject( float num )
-	{
-		double d_num( num );
-		return PyFloat_FromDouble( d_num );
-	}
-
-	bool is_py_int( PyObject *obj )
-	{
-		return PyLong_Check( obj );
-	}
-
-	bool is_py_float( PyObject *obj )
-	{
-		return PyFloat_Check( obj );
-	}
-
-	bool convert( PyObject *obj, std::string &val )
-	{
-		if ( PyBytes_Check( obj ) )
-		{
-			val = PyBytes_AsString( obj );
-			return true;
-		}
-		else if ( PyUnicode_Check( obj ) )
-		{
-			val = PyUnicode_AsUTF8( obj );
-			return true;
-		}
-		return false;
-	}
-
-	bool convert( PyObject *obj, std::vector<char> &val )
-	{
-		if ( !PyByteArray_Check( obj ) )
-			return false;
-		if ( val.size() < (size_t) PyByteArray_Size( obj ) )
-			val.resize( PyByteArray_Size( obj ) );
-		std::copy( PyByteArray_AsString( obj ),
-				   PyByteArray_AsString( obj ) + PyByteArray_Size( obj ),
-				   val.begin() );
-		return true;
-	}
-
-	bool convert( PyObject *obj, bool &value )
-	{
-		if ( obj == Py_False )
-			value = false;
-		else if ( obj == Py_True )
-			value = true;
-		else
-			return false;
-		return true;
-	}
-
-	bool convert( PyObject *obj, double &val )
-	{
-		return _generic_convert<double>( obj, is_py_float, PyFloat_AsDouble, val );
-	}
-
-	// It's unforunate that this takes so long
-	bool convert( PyObject *obj, float &val )
-	{
-		double d( 0 );
-		if ( convert( obj, d ) )
-		{
-			val = (float) d;
-			return true;
-		}
-		int i( 0 );
-		if ( convert( obj, i ) )
-		{
-			val = (float) i;
-			return true;
-		}
-		return false;
-	}
-
-	// If the client knows what to do, let 'em deal with it
-	bool convert( PyObject * obj, pyl::Object& pyObj )
-	{
-		pyObj = pyl::Object( obj );
-		// I noticed that the incref is needed... not sure why?
-		if ( auto ptr = pyObj.get() )
-		{
-			Py_INCREF( ptr );
-			return true;
-		}
-		return false;
-	}
-
 	// We only need one instance of the above, shared by exposed objects
 	/*static*/ int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
 	{
@@ -322,127 +484,8 @@ namespace pyl
 		return -1;
 	};
 
-	_ExposedClassDef::_ExposedClassDef()
-	{
-		// Take care of this now
-		memset( &m_TypeObject, 0, sizeof( PyTypeObject ) );
-		m_TypeObject.ob_base = PyVarObject_HEAD_INIT( NULL, 0 )
-			m_TypeObject.tp_init = (initproc) PyClsInitFunc;
-		m_TypeObject.tp_new = PyType_GenericNew;
-		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-		m_TypeObject.tp_basicsize = sizeof( _GenericPyClass );
-	}
-
-
-	// Constructor for exposed classes, sets up type object
-	_ExposedClassDef::_ExposedClassDef( std::string strClassName ) :
-		_ExposedClassDef()
-	{
-		m_strClassName = strClassName;
-	}
-
-	// This has to happen at a time when these
-	// definitions will no longer move
-	void _ExposedClassDef::Prepare()
-	{
-		AddMember( "c_ptr", T_OBJECT_EX, offsetof( _GenericPyClass, capsule ), 0, "pointer to the underlying c object" );
-
-		// Assing the pointers
-		m_TypeObject.tp_name = m_strClassName.c_str();
-		m_TypeObject.tp_members = (PyMemberDef *) m_ntMemberDefs.data();
-		m_TypeObject.tp_methods = (PyMethodDef *) m_ntMethodDefs.data();
-	}
-
-	bool _ExposedClassDef::IsPrepared() const
-	{
-		return (bool) ( m_TypeObject.tp_name && m_TypeObject.tp_members && m_TypeObject.tp_methods );
-	}
-
-	bool _ExposedClassDef::AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs )
-	{
-		if ( strMethodName.empty() )
-		{
-			throw std::runtime_error( "Error adding method " + strMethodName );
-			return false;
-		}
-
-		auto paInsert = m_setUsedMethodNames.insert( strMethodName );
-		if ( paInsert.second == false )
-		{
-			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
-			return false;
-		}
-
-		const char * pName = paInsert.first->c_str();
-		const char * pDocs = docs.empty() ? nullptr : m_liMethodDocs.insert( m_liMethodDocs.end(), docs )->c_str();
-		m_ntMethodDefs.push_back( { pName, fnPtr, flags, pDocs } );
-		return true;
-	}
-
-	bool _ExposedClassDef::AddMember( std::string strMemberName, int type, int offset, int flags, std::string docs )
-	{
-		if ( strMemberName.empty() )
-		{
-			throw std::runtime_error( "Error adding member " + strMemberName );
-			return false;
-		}
-
-		auto paInsert = m_setUsedMemberNames.insert( strMemberName );
-		if ( paInsert.second == false )
-		{
-			throw std::runtime_error( "Error: Attempting to overwrite exisiting exposed python function" );
-			return false;
-		}
-
-		char * pName = (char *) paInsert.first->c_str();
-		char * pDocs = (char *) ( docs.empty() ? nullptr : m_liMemberDocs.insert( m_liMemberDocs.end(), docs )->c_str() );
-
-		m_ntMemberDefs.push_back( { pName, type, offset, flags, pDocs } );
-		return true;
-	}
-
-	PyTypeObject * _ExposedClassDef::GetTypeObject() const
-	{
-		return (PyTypeObject *) &m_TypeObject;
-	}
-
-	const char * _ExposedClassDef::GetName() const
-	{
-		return m_strClassName.c_str();
-	}
-
-	void _ExposedClassDef::SetName( std::string strName )
-	{
-		// We can't do this if we're been prepared
-		if ( IsPrepared() )
-			return;
-
-		m_strClassName = strName;
-
-	}
-
-	int RunCmd( std::string cmd )
-	{
-		return PyRun_SimpleString( cmd.c_str() );
-	}
-
-	int RunFile( std::string file )
-	{
-		std::ifstream in( file );
-		return RunCmd( { ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() } );
-	}
-
-	int get_total_ref_count()
-	{
-		PyObject* refCount = PyObject_CallObject( PySys_GetObject( ( char* )"gettotalrefcount" ), NULL );
-		if ( !refCount ) return -1;
-		int ret = _PyLong_AsInt( refCount );
-		Py_DECREF( refCount );
-		return ret;
-	}
-
 	// Static module map map declaration
-	std::map<std::string, ModuleDef> ModuleDef::s_mapPyModules;
+	ModuleDef::ModuleMap ModuleDef::s_mapPyModules;
 
 	// Name and doc constructor
 	ModuleDef::ModuleDef( const std::string& moduleName, const std::string& moduleDocs ) :
@@ -460,7 +503,7 @@ namespace pyl
 	// This is implemented here just to avoid putting these STL calls in the header
 	bool ModuleDef::registerClass_impl( const std::type_index T, const std::type_index P, const std::string& strClassName, const ModuleDef * const pParentClassMod )
 	{
-		for ( auto& itClass : pParentClassMod->m_mapExposedClasses )
+		for ( const ExposedTypeMap::value_type& itClass : pParentClassMod->m_mapExposedClasses )
 		{
 			if ( itClass.first == P )
 			{
@@ -483,7 +526,7 @@ namespace pyl
 	int ModuleDef::exposeObject_impl( const std::type_index T, void * pInstance, const std::string& strName, PyObject * pModule )
 	{
 		// If we haven't declared the class, we can't expose it
-		auto itExpCls = m_mapExposedClasses.find( T );
+		ExposedTypeMap::iterator itExpCls = m_mapExposedClasses.find( T );
 		if ( itExpCls == m_mapExposedClasses.end() )
 			return -1;
 
@@ -534,9 +577,9 @@ namespace pyl
 			if ( PyObject * mod = PyModule_Create( &m_pyModDef ) )
 			{
 				// Declare all exposed classes within the module
-				for ( auto& itExposedClass : m_mapExposedClasses )
+				for ( const ExposedTypeMap::value_type& itExposedClass : m_mapExposedClasses )
 				{
-					_ExposedClassDef& expCls = itExposedClass.second;
+					const _ExposedClassDef& expCls = itExposedClass.second;
 
 					// Get the classes itExposedClass
 					PyTypeObject * pTypeObj = expCls.GetTypeObject();
@@ -584,14 +627,14 @@ namespace pyl
 	void ModuleDef::prepareClasses()
 	{
 		// Lock down any definitions
-		for ( auto& e_Class : m_mapExposedClasses )
+		for ( ExposedTypeMap::value_type& e_Class : m_mapExposedClasses )
 			e_Class.second.Prepare();
 	}
 
 	/*static*/ ModuleDef * ModuleDef::GetModuleDef( const std::string moduleName )
 	{
 		// Return nullptr if we don't have this module
-		auto it = s_mapPyModules.find( moduleName );
+		ModuleMap::iterator it = s_mapPyModules.find( moduleName );
 		if ( it == s_mapPyModules.end() )
 			return nullptr;
 
@@ -601,7 +644,7 @@ namespace pyl
 
 	Object ModuleDef::AsObject() const
 	{
-		auto it = s_mapPyModules.find( m_strModName );
+		ModuleMap::iterator it = s_mapPyModules.find( m_strModName );
 		if ( it == s_mapPyModules.end() )
 			return nullptr;
 
@@ -612,7 +655,7 @@ namespace pyl
 
 	/*static*/ int ModuleDef::InitAllModules()
 	{
-		for ( auto& module : s_mapPyModules )
+		for ( ModuleMap::value_type& module : s_mapPyModules )
 		{
 			module.second.prepareClasses();
 		}
@@ -635,27 +678,13 @@ namespace pyl
 		if ( pModule )
 			return { pModule };
 
+		throw runtime_error( "Error locating module!" );
 		return { nullptr };
 	}
 
 	Object GetMainModule()
 	{
 		return GetModule( "__main__" );
-	}
-
-	void _PyObjectDeleter::operator()( PyObject * pObj )
-	{
-		Py_XDECREF( pObj );
-	}
-
-	std::string get_tabs( int n )
-	{
-		// Four spaces...
-		const std::string py_tab = "    ";
-		std::string ret;
-		for ( int i = 0; i < n; i++ )
-			ret += py_tab;
-		return ret;
 	}
 
 	_PyFunc _getPyFunc_Case4( std::function<void()> fn )
