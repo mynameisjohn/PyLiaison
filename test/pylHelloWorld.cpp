@@ -14,25 +14,25 @@ int main( int argc, char ** argv )
 		pyl::Object obMain = pyl::GetMainModule();
 
 		// You can execute commands in the interpreter via RunCmd
-		pyl::RunCmd( "print('Hello from Python!')" );
+		pyl::run_cmd( "print('Hello from Python!')" );
 
 		// Import sys, get the interpeter version
-		pyl::RunCmd( "import sys" );
-		pyl::RunCmd( "print(sys.version_info)" );
+		pyl::run_cmd( "import sys" );
+		pyl::run_cmd( "print(sys.version_info)" );
 
 		// Declare a string in the main module called stringFromCPP
 		// and print it in the interpreter
 		obMain.set_attr( "stringFromCPP", "Hello World from C++!" );
-		pyl::RunCmd( "print(stringFromCPP)" );
+		pyl::run_cmd( "print(stringFromCPP)" );
 
 		// Create a variable in the main module called iVal, storing
 		// an integer value 12345, and print out the value
 		int iVal( 12345 );
 		obMain.set_attr( "iVal", iVal );
-		pyl::RunCmd( "print('We got', iVal, 'from CPP')" );
+		pyl::run_cmd( "print('We got', iVal, 'from CPP')" );
 
 		// Negate the value in python
-		pyl::RunCmd( "iVal = -iVal" );
+		pyl::run_cmd( "iVal = -iVal" );
 
 		// Get the value and convert it to an int
 		// (conversions return false if they fail)

@@ -417,11 +417,10 @@ namespace pyl
 		// Release memory and pass along
 		catch ( pyl::runtime_error e )
 		{
-			PyErr_Print();
+			print_error();
 			func.reset();
 			throw e;
 		}
-		return { nullptr };
 	}
 
 	Object Object::call( const std::string strName )
@@ -553,6 +552,7 @@ namespace pyl
 		// decref and return
 		Py_DECREF( pModule );
 		Py_DECREF( newPyObject );
+		return 0;
 	}
 
 	// Create the function object invoked when this module is imported
@@ -679,7 +679,6 @@ namespace pyl
 			return { pModule };
 
 		throw runtime_error( "Error locating module!" );
-		return { nullptr };
 	}
 
 	Object GetMainModule()

@@ -9,6 +9,7 @@
 #include <typeindex>
 
 #include <Python.h>
+#include <structmember.h>
 
 /********************************************//*!
 \namespace pyl
@@ -488,7 +489,7 @@ namespace pyl
 	template<class C> PyObject *alloc_pyobject( const std::set<C>& s );
 
 	// Creates a PyObject from any integral type (gets converted to PyLong)
-	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type = 0>
+	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type /*= 0*/>
 	PyObject *alloc_pyobject( T num )
 	{
 		return PyLong_FromLong( num );
@@ -716,8 +717,8 @@ namespace pyl
 		template<typename T>
 		bool set_attr( const std::string strName, T obj )
 		{
-			unique_ptr pyObj = alloc_pyobject( obj );
-			int success = PyObject_SetAttrString( this->get(), name.c_str(), pyObj );
+			unique_ptr pyObj( alloc_pyobject( obj ) );
+			int success = PyObject_SetAttrString( this->get(), strName.c_str(), pyObj.get() );
 			return ( success == 0 );
 		}
 
@@ -732,7 +733,7 @@ namespace pyl
 							   \brief Attempts to convert this object to a Type T, stored in param
 							   \return True or false depending on success of conversion*/
 		template<class T>
-		bool convert( T &param ) { return convert( this->get(), param ); }
+		bool convert( T &param ) { return pyl::convert<T>( this->get(), param ); }
 
 		/*! reset
 		\brief Decerements our reference of the PyObject
