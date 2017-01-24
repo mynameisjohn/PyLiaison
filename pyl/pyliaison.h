@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <set>
 #include <list>
@@ -10,6 +12,23 @@
 
 #include <Python.h>
 #include <structmember.h>
+
+#ifndef _PY_VER
+	#define _PY_VER "35"
+#endif // _PYVER
+
+// 
+#if _WIN32
+	#if _DEBUG
+		#pragma comment( lib, "python" _PY_VER "_d.lib")
+	#else
+		#pragma comment( lib, "python" _PY_VER ".lib")
+	#endif
+#elif __APPLE__
+	#pragma comment( lib, "python" _PY_VER "m.so")
+#else
+	#pragma comment( lib, "python" _PY_VER "m.a")
+#endif
 
 /********************************************//*!
 \namespace pyl
@@ -134,7 +153,8 @@ namespace pyl
 	// Invoke the standard print function on a PyObject
 	void print_object( PyObject *obj );
 
-	int run_cmd( std::string strCMD );
+	int run_cmd( std::string& strCMD );
+	int run_cmd( const char * pStr );
 
 	int run_file( std::string strCMD );
 
@@ -217,57 +237,6 @@ namespace pyl
 	Converts either a capsule or address (integer) to a pointer to some T
 	It's up to you to make sure the address coming from python is valid*/
 	template<typename T> bool convert( PyObject * obj, T *& val );
-
-	// Add to Tuple functions
-	// These recurse to an arbitrary base b
-	// and convert objects in a PyTuple to objects in a
-	// std::tuple. I added the b parameter because I wanted
-	// to set it to 1 and leave the first element alone.
-
-	// Forward declarations
-	template<typename First, typename... Rest> void _add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail );
-	void _add_tuple_vars( unique_ptr &tup, PyObject *arg );
-	template<typename Arg> void _add_tuple_vars( unique_ptr &tup, const Arg &arg );
-	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj );
-
-	template<typename First, typename... Rest>
-	void _add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail )
-	{
-		_add_tuple_var(
-			tup,
-			PyTuple_Size( tup.get() ) - sizeof...(tail) -1,
-			head
-		);
-
-		// 
-		_add_tuple_vars( tup, tail... );
-	}
-
-	void _add_tuple_vars( unique_ptr &tup, PyObject *arg )
-	{
-		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, arg );
-	}
-
-	// Base case for add_tuple_vars
-	template<typename Arg>
-	void _add_tuple_vars( unique_ptr &tup, const Arg &arg )
-	{
-		_add_tuple_var( tup,
-					   PyTuple_Size( tup.get() ) - 1, alloc_pyobject( arg )
-		);
-	}
-
-	// Adds a PyObject* to the tuple object
-	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj )
-	{
-		PyTuple_SetItem( tup.get(), i, pobj );
-	}
-
-	// Adds a PyObject* to the tuple object
-	template<class T> void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, const T &data )
-	{
-		PyTuple_SetItem( tup.get(), i, alloc_pyobject( data ) );
-	}
 
 	// Base case, when n==b, just convert and return
 	template<size_t n, size_t b, class... Args>
@@ -554,6 +523,38 @@ namespace pyl
 	bool is_py_float( PyObject *obj );
 	bool is_py_int( PyObject *obj );
 
+
+	// Add to Tuple functions
+	// These recurse to an arbitrary base b
+	// and convert objects in a PyTuple to objects in a
+	// std::tuple. I added the b parameter because I wanted
+	// to set it to 1 and leave the first element alone.
+
+	// Adds a PyObject* to the tuple object
+	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj );
+	void _add_tuple_vars( unique_ptr &tup, PyObject *arg );
+
+	// Adds a PyObject* to the tuple object
+	template<class T> void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, const T &data )
+	{
+		PyTuple_SetItem( tup.get(), i, alloc_pyobject<T>( data ) );
+	}
+
+	// Forward declarations
+	template<typename First, typename... Rest>
+	void _add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail )
+	{
+		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - sizeof...(tail) -1, head );
+		_add_tuple_vars( tup, tail... );
+	}
+
+	// Base case for add_tuple_vars
+	template<typename T>
+	void _add_tuple_vars( unique_ptr &tup, const T &arg )
+	{
+		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, alloc_pyobject<T>( arg ) );
+	}
+
 	// TODO Unordered sets/maps
 
 	// -------------- Exposed Class Definition ----------------
@@ -657,7 +658,7 @@ namespace pyl
 			{
 				// Create the tuple argument
 				tup = PyTuple_New( sizeof...( args ) );
-				add_tuple_vars( tup, args... );
+				_add_tuple_vars( tup, args... );
 				return _call_impl( strName, tup.get() );
 			}
 			// Release memory and pass along

@@ -78,15 +78,21 @@ namespace pyl
 		PyObject_Print( obj, stdout, 0 );
 	}
 
-	int run_cmd( std::string cmd )
+	int run_cmd( std::string& cmd )
 	{
 		return PyRun_SimpleString( cmd.c_str() );
+	}
+
+	int run_cmd( const char * pStr )
+	{
+		return pStr ? PyRun_SimpleString( pStr ) : -1;
 	}
 
 	int run_file( std::string file )
 	{
 		std::ifstream in( file );
-		return run_cmd( { ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() } );
+		std::string strCMD( ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() );
+		return run_cmd( strCMD );
 	}
 
 	int get_total_ref_count()
@@ -232,6 +238,16 @@ namespace pyl
 			return true;
 		}
 		return false;
+	}
+
+	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj )
+	{
+		PyTuple_SetItem( tup.get(), i, pobj );
+	}
+
+	void _add_tuple_vars( unique_ptr &tup, PyObject *arg )
+	{
+		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, arg );
 	}
 
 
