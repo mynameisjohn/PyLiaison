@@ -2,6 +2,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 PROJECT(pylTests)
 
+SET(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
+
 # Add subdir for Pyliaison
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/pyl)
 
@@ -13,4 +15,4 @@ LINK_DIRECTORIES(${PYTHON_LIB_DIR})
 
 # Hello world
 ADD_EXECUTABLE(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
-TARGET_LINK_LIBRARIES(pylHelloWorld LINK_PUBLIC PyLiaison)
+TARGET_LINK_LIBRARIES(pylHelloWorld LINK_PUBLIC PyLiaison ${PYTHON_LIB})

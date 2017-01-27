@@ -17,17 +17,13 @@
 	#define _PY_VER "35"
 #endif // _PYVER
 
-// 
+// If on Windows, throw an error if 
+// building debug but using release pyl
 #if _WIN32
-	#if _DEBUG
-		#pragma comment( lib, "python" _PY_VER "_d.lib")
-	#else
-		#pragma comment( lib, "python" _PY_VER ".lib")
+	#if _DEBUG && !defined(_PYL_DBG)
+        #error Error! Combining debug and release Python libs! \
+        This will cause a crash sooner or later!
 	#endif
-#elif __APPLE__
-	#pragma comment( lib, "python" _PY_VER "m.so")
-#else
-	#pragma comment( lib, "python" _PY_VER "m.a")
 #endif
 
 /********************************************//*!
@@ -105,7 +101,7 @@ namespace pyl
 			return instance().fn_( args... );
 		}
 
-		typedef decltype( &fun_ptr_helper::invoke ) pointer_type;
+		typedef decltype( &_fun_ptr_helper::invoke ) pointer_type;
 		static pointer_type ptr()
 		{
 			return &invoke;
@@ -264,7 +260,7 @@ namespace pyl
 		if ( !PyTuple_Check( obj ) ||
 			 PyTuple_Size( obj ) != sizeof...( Args ) )
 			return false;
-		return add_to_tuple<sizeof...(Args) -1, 0, Args...>( obj, tup );
+		return _add_to_tuple<sizeof...(Args) -1, 0, Args...>( obj, tup );
 	}
 
 	// Convert a PyObject to a std::map
@@ -468,7 +464,7 @@ namespace pyl
 	template <typename T>
 	PyObject * alloc_pyobject( T * ptr )
 	{
-		return PyCapsule_New( (voidptr_t) ptr, NULL, NULL );
+		return PyCapsule_New( (void *) ptr, NULL, NULL );
 	}
 
 	// Generic python list allocation
@@ -599,7 +595,7 @@ namespace pyl
 	// Exposed classes need a python constructor, backed by this function
 	// Note that this does not construct a C++ class, but rather exposes
 	// it in the interpreter as a new python object
-	static int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwargs );
+	int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwargs );
 
 	// All exposed objects inherit from this python type, which has a capsule
 	// member holding a pointer to the original object
@@ -811,7 +807,7 @@ namespace pyl
 			std::get<0>( tup ) = _getCapsulePtr<C>( s );
 
 			// recurse till the first element, getting args from a
-			add_to_tuple<sizeof...(Args) -1, 1, Args...>( a, tup );
+			_add_to_tuple<sizeof...(Args) -1, 1, Args...>( a, tup );
 
 			// Invoke function, get retVal
 			R rVal = invoke( fn, tup );
@@ -832,7 +828,7 @@ namespace pyl
 			std::get<0>( tup ) = _getCapsulePtr<C>( s );
 
 			// recurse till the first element, getting args from a
-			add_to_tuple<sizeof...(Args) -1, 1, Args...>( a, tup );
+			_add_to_tuple<sizeof...(Args) -1, 1, Args...>( a, tup );
 
 			// invoke function
 			invoke( fn, tup );
@@ -942,7 +938,7 @@ namespace pyl
 			m_liExposedFunctions.push_back( pFn );
 
 			// now make the function pointer (TODO figure out these ids, or do something else)
-			PyCFunction fnPtr = get_fn_ptr<tag>( m_liExposedFunctions.back() );
+			PyCFunction fnPtr = _get_fn_ptr<tag>( m_liExposedFunctions.back() );
 
 			// You can key the methodName string to a std::function
 			if ( addMethod_impl( methodName, fnPtr, methodFlags, docs ) )
@@ -964,7 +960,7 @@ namespace pyl
 			m_liExposedFunctions.push_back( pFn );
 
 			// now make the function pointer (TODO figure out these ids, or do something else)
-			PyCFunction fnPtr = get_fn_ptr<tag>( m_liExposedFunctions.back() );
+			PyCFunction fnPtr = _get_fn_ptr<tag>( m_liExposedFunctions.back() );
 
 			// Add function
 			if ( it->second.AddMethod( methodName, fnPtr, methodFlags, docs ) )
@@ -1214,7 +1210,7 @@ namespace pyl
 				return -1;
 
 			// Call the implementation function, which makes sure it's in our type map and creates the PyObject
-			return exposeObject_impl( typeid( C ), static_cast<voidptr_t>( instance ), name, mod );
+			return exposeObject_impl( typeid( C ), static_cast<void *>( instance ), name, mod );
 		}
 
 
@@ -1255,7 +1251,7 @@ namespace pyl
 			mod.createFnObject();
 
 			// Add this module to the list of builtin modules, and ensure m_fnModInit gets called on import
-			int success = PyImport_AppendInittab( mod.getNameBuf(), get_fn_ptr<tag>( mod.m_fnModInit ) );
+			int success = PyImport_AppendInittab( mod.getNameBuf(), _get_fn_ptr<tag>( mod.m_fnModInit ) );
 			if ( success != 0 )
 			{
 				throw pyl::runtime_error( "Error creating module " + moduleName );

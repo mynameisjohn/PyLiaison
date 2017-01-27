@@ -478,7 +478,7 @@ namespace pyl
 	}
 
 	// We only need one instance of the above, shared by exposed objects
-	/*static*/ int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
+	int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
 	{
 		// In the example the first arg isn't a PyObject *, but... idk man
 		_GenericPyClass * realPtr = static_cast<_GenericPyClass *>( (void *) self );

@@ -15,6 +15,13 @@ ELSE(NOT(${_PY_VER}))
     MESSAGE("PyLiaison: Python version specified as ${_PY_VER}")
 ENDIF(NOT(${_PY_VER}))
 
+# Set define flag for debug builds
+# This is important for windows, as combining
+# release and debug code with python crashes
+IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    ADD_DEFINITIONS(-D_PYL_DBG)
+ENDIF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+
 # Set library directory
 # uses version specified and some familiar paths,
 # but can be specified on the command line
@@ -28,8 +35,24 @@ IF(NOT(${_PYTHON_LIB_DIR}))
     ENDIF(WIN32)
     MESSAGE("PyLiaison: No Python library dir specified! Defaulting to ${_PYTHON_LIB_DIR}")
 ELSE(NOT(${_PYTHON_LIB_DIR}))
-    MESSAGE("PyLiaison: Python library dir set to ${_PYTHON_LIB_DIR}...")
+    MESSAGE("PyLiaison: Python library dir set to ${_PYTHON_LIB_DIR}")
 ENDIF(NOT(${_PYTHON_LIB_DIR}))
+
+# Set actual library file
+IF(WIN32)
+    # We must link against the correct 
+    # library on Windows, or crash
+    IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+        SET(PYTHON_LIB "python${PY_VER}_d")
+    ELSE(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+        SET(PYTHON_LIB "python${PY_VER}")
+    ENDIF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+ELSE(WIN32)
+    # Otherwise link against the shared object
+    SET(PYTHON_LIB "python${_PY_VER}m")
+ENDIF(WIN32)
+
+MESSAGE("PyLiaison: Python library set to ${PYTHON_LIB}")
 
 # Set include directory
 # uses version specified and some familiar paths,
@@ -44,13 +67,9 @@ IF(NOT(${_PYTHON_INCLUDE_DIR}))
     ENDIF(WIN32)
     MESSAGE("PyLiaison: No Python include dir specified! Defaulting to ${_PYTHON_INCLUDE_DIR}")
 ELSE(NOT(${_PYTHON_INCLUDE_DIR}))
-    MESSAGE("PyLiaison: Python include dir set to ${_PYTHON_INCLUDE_DIR}...")
+    MESSAGE("PyLiaison: Python include dir set to ${_PYTHON_INCLUDE_DIR}")
 ENDIF(NOT(${_PYTHON_INCLUDE_DIR}))
 MESSAGE("\n")
-
-# Move variables up to parent scope
-SET(PYTHON_LIB_DIR ${_PYTHON_LIB_DIR} PARENT_SCOPE)
-SET(PYTHON_INCLUDE_DIR ${_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
 
 # Declare PyLiaison library
 ADD_LIBRARY(PyLiaison 
@@ -59,3 +78,9 @@ ADD_LIBRARY(PyLiaison
 
 # We need the include path and the python header file location
 TARGET_INCLUDE_DIRECTORIES(PyLiaison PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${_PYTHON_INCLUDE_DIR})
+
+# Create variables for parent scope
+# to allow easier include/linkage
+SET(PYTHON_INCLUDE_DIR ${_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
+SET(PYTHON_LIB_DIR ${_PYTHON_LIB_DIR} PARENT_SCOPE)
+SET(PYTHON_LIB ${PYTHON_LIB} PARENT_SCOPE)
