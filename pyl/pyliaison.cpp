@@ -132,6 +132,23 @@ namespace pyl
 		return false;
 	}
 
+	bool convert( PyObject *obj, std::wstring &val )
+	{
+		if ( PyUnicode_Check( obj ) )
+		{
+			Py_ssize_t size( 0 );
+			val = PyUnicode_AsWideCharString( obj, &size );
+			return true;
+		}
+		//else if ( PyBytes_Check( obj ) )
+		//{
+		//	 NYI
+		//	PyObject * unicodeString = PyUnicode_Decode( PyBytes_AsString( obj ), PyBytes_Size( obj ), "utf16", nullptr );
+		//	return convert( unicodeString, val );
+		//}
+		return false;
+	}
+
 	bool convert( PyObject *obj, std::vector<char> &val )
 	{
 		if ( !PyByteArray_Check( obj ) )
@@ -240,14 +257,14 @@ namespace pyl
 		return false;
 	}
 
-	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj )
+	void _add_tuple_var( PyObject * pTup, Py_ssize_t i, PyObject *pobj )
 	{
-		PyTuple_SetItem( tup.get(), i, pobj );
+		PyTuple_SetItem( pTup, i, pobj );
 	}
 
-	void _add_tuple_vars( unique_ptr &tup, PyObject *arg )
+	void _add_tuple_vars( PyObject * pTup, PyObject *arg )
 	{
-		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, arg );
+		_add_tuple_var( pTup, PyTuple_Size( pTup ) - 1, arg );
 	}
 
 
@@ -359,12 +376,15 @@ namespace pyl
 		Py_XDECREF( pObj );
 	}
 
-	Object::Object() : m_pPyObject( nullptr )
-	{}
+	Object::Object() {}
 
-	Object::Object( PyObject *obj ) : m_pPyObject( obj )
+	Object::Object( PyObject *obj )
 	{
-		Py_XINCREF( obj );
+		if ( obj == nullptr )
+			throw pyl::runtime_error( "Error: Null object used to construct pyl Object" );
+
+		Py_INCREF( obj );
+		m_upPyObject.reset( obj );
 	}
 
 	Object::Object( const std::string script_path )
@@ -387,8 +407,7 @@ namespace pyl
 		PyObject * pScript = PyImport_ImportModule( file_path.c_str() );
 		if ( pScript )
 		{
-			m_pPyObject = pScript;
-			Py_XINCREF( m_pPyObject );
+			m_upPyObject.reset( pScript );
 		}
 
 		// If we didn't get it, see if the dir path is in PyPath
@@ -407,12 +426,13 @@ namespace pyl
 		pScript = PyImport_ImportModule( file_path.c_str() );
 		if ( pScript )
 		{
-			m_pPyObject = pScript;
-			Py_XINCREF( m_pPyObject );
+			m_upPyObject.reset( pScript );
 		}
-
-		print_error();
-		throw runtime_error( "Error locating module" );
+		else
+		{
+			print_error();
+			throw runtime_error( "Error locating module" );
+		}
 	}
 
 	Object Object::_call_impl( const std::string strName, PyObject * pArgTup /*= nullptr*/ )
@@ -446,7 +466,10 @@ namespace pyl
 
 	Object Object::get_attr( const std::string strName )
 	{
-		PyObject *obj( PyObject_GetAttrString( m_pPyObject, strName.c_str() ) );
+		if ( !m_upPyObject )
+			return { nullptr };
+
+		PyObject *obj( PyObject_GetAttrString( m_upPyObject.get(), strName.c_str() ) );
 		if ( !obj )
 			throw std::runtime_error( "Unable to find attribute '" + strName + '\'' );
 		return { obj };
@@ -465,16 +488,12 @@ namespace pyl
 
 	void Object::reset()
 	{
-		if ( m_pPyObject )
-		{
-			Py_XDECREF( m_pPyObject );
-			m_pPyObject = nullptr;
-		}
+		m_upPyObject.reset();
 	}
-
+	
 	PyObject * Object::get() const
 	{
-		return m_pPyObject;
+		return m_upPyObject.get();
 	}
 
 	// We only need one instance of the above, shared by exposed objects
@@ -485,15 +504,15 @@ namespace pyl
 		// The first argument is the capsule object
 		PyObject * c = PyTuple_GetItem( args, 0 );
 
-		if ( c )
-		{// Or at least it better be
-			if ( PyCapsule_CheckExact( c ) )
-			{
-				Py_INCREF( c );
-				realPtr->capsule = c;
-
-				return 0;
-			}
+		// There should be a capsule here, if so
+		// increment its ref count and assign the capsule pointer
+		if ( c && PyCapsule_CheckExact( c ) )
+		{
+			// TODO do I need to delete the old capsule member?
+			// Py_XDECREF( realPtr->capsule );
+			Py_INCREF( c );
+			realPtr->capsule = c;
+			return 0;
 		}
 
 		return -1;

@@ -153,6 +153,10 @@ namespace pyl
 	/*! convert \brief Convert a PyObject to a string
 	Works if the object is a bytes or unicode string*/
 	bool convert( PyObject *obj, std::string &val );
+
+	/*! convert \brief Convert a PyObject to a wide string
+	Works if the object is a bytes or unicode string*/
+	bool convert( PyObject *obj, std::wstring &val );
 	
 	/*! convert \brief Convert a PyObject to a char vector
 	Works if the object is a bytearray*/
@@ -510,7 +514,6 @@ namespace pyl
 	bool is_py_float( PyObject *obj );
 	bool is_py_int( PyObject *obj );
 
-
 	// Add to Tuple functions
 	// These recurse to an arbitrary base b
 	// and convert objects in a PyTuple to objects in a
@@ -518,28 +521,28 @@ namespace pyl
 	// to set it to 1 and leave the first element alone.
 
 	// Adds a PyObject* to the tuple object
-	void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, PyObject *pobj );
-	void _add_tuple_vars( unique_ptr &tup, PyObject *arg );
+	void _add_tuple_var( PyObject * pTup, Py_ssize_t i, PyObject *pobj );
+	void _add_tuple_vars( PyObject * pTup, PyObject *arg );
 
 	// Adds a PyObject* to the tuple object
-	template<class T> void _add_tuple_var( unique_ptr &tup, Py_ssize_t i, const T &data )
+	template<class T> void _add_tuple_var( PyObject * pTup, Py_ssize_t i, const T &data )
 	{
-		PyTuple_SetItem( tup.get(), i, alloc_pyobject<T>( data ) );
+		PyTuple_SetItem( pTup, i, alloc_pyobject( data ) );
 	}
 
 	// Forward declarations
 	template<typename First, typename... Rest>
-	void _add_tuple_vars( unique_ptr &tup, const First &head, const Rest&... tail )
+	void _add_tuple_vars( PyObject * pTup, const First &head, const Rest&... tail )
 	{
-		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - sizeof...(tail) -1, head );
-		_add_tuple_vars( tup, tail... );
+		_add_tuple_var( pTup, PyTuple_Size( pTup ) - sizeof...(tail) -1, head );
+		_add_tuple_vars( pTup, tail... );
 	}
 
 	// Base case for add_tuple_vars
 	template<typename T>
-	void _add_tuple_vars( unique_ptr &tup, const T &arg )
+	void _add_tuple_vars( PyObject * pTup, const T &arg )
 	{
-		_add_tuple_var( tup, PyTuple_Size( tup.get() ) - 1, alloc_pyobject<T>( arg ) );
+		_add_tuple_var( pTup, PyTuple_Size( pTup ) - 1, alloc_pyobject( arg ) );
 	}
 
 	// TODO Unordered sets/maps
@@ -601,7 +604,7 @@ namespace pyl
 	*/
 	class Object
 	{
-		PyObject * m_pPyObject;
+		unique_ptr m_upPyObject;
 
 	public:
 		/*!
@@ -618,7 +621,7 @@ namespace pyl
 		/*!
 		\brief Copy construct from another pyl Object
 
-		This will incrememnt the reference counter of the
+		This will increment the reference counter of the
 		input object, making it similar to an assignment*/
 		Object( PyObject *obj );
 
@@ -640,19 +643,19 @@ namespace pyl
 		Object call( const std::string strName, const Args... args )
 		{
 			// Try to call, clean memory on error
-			Object tup;
+			unique_ptr upTup;
 			try
 			{
 				// Create the tuple argument
-				tup = PyTuple_New( sizeof...( args ) );
-				_add_tuple_vars( tup, args... );
-				return _call_impl( strName, tup.get() );
+				upTup.reset( PyTuple_New( sizeof...( args ) ) );
+				_add_tuple_vars( upTup.get(), args... );
+				return _call_impl( strName, upTup.get() );
 			}
 			// Release memory and pass along
 			catch ( pyl::runtime_error e )
 			{
 				print_error();
-				tup.reset();
+				upTup.reset();
 				throw e;
 			}
 			return { nullptr };
@@ -715,13 +718,13 @@ namespace pyl
 
 		No reference inc/dec is performed
 		\return The PyObject * this Object represents, nullptr if None*/
-		PyObject * get() const;// { return m_pPyObject; }
+		PyObject * get() const;
 
 							   /*! convert
 							   \brief Attempts to convert this object to a Type T, stored in param
 							   \return True or false depending on success of conversion*/
 		template<class T>
-		bool convert( T &param ) { return pyl::convert<T>( this->get(), param ); }
+		bool convert( T &param ) { return pyl::convert( this->get(), param ); }
 
 		/*! reset
 		\brief Decerements our reference of the PyObject

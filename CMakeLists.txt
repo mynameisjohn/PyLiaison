@@ -13,6 +13,10 @@ LINK_DIRECTORIES(${PYTHON_LIB_DIR})
 
 # Add test executables
 
-# Hello world
+# Hello World
 ADD_EXECUTABLE(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
 TARGET_LINK_LIBRARIES(pylHelloWorld LINK_PUBLIC PyLiaison ${PYTHON_LIB})
+
+# Test Script
+ADD_EXECUTABLE(pylTestScript ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestScript.cpp ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestScript.py)
+TARGET_LINK_LIBRARIES(pylTestScript LINK_PUBLIC PyLiaison ${PYTHON_LIB})

@@ -23,8 +23,11 @@ int main( int argc, char ** argv )
 	}
 	// These exceptions are thrown when something in pyliaison
 	// goes wrong, but they're a child of std::runtime_error
-	catch ( pyl::runtime_error )
+	catch ( pyl::runtime_error e )
 	{
+		std::cout << e.what() << std::endl;
+		pyl::print_error();
+		pyl::finalize();
 		return EXIT_FAILURE;
 	}
 }
