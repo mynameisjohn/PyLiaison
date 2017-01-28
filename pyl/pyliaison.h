@@ -17,15 +17,6 @@
 	#define _PY_VER "35"
 #endif // _PYVER
 
-// If on Windows, throw an error if 
-// building debug but using release pyl
-#if _WIN32
-	#if _DEBUG && !defined(_PYL_DBG)
-        #error Error! Combining debug and release Python libs! \
-        This will cause a crash sooner or later!
-	#endif
-#endif
-
 /********************************************//*!
 \namespace pyl
 \brief The namespace in which Pyliaison functionality lives

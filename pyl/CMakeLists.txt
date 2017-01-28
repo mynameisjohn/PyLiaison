@@ -20,6 +20,7 @@ ENDIF(NOT(${_PY_VER}))
 # release and debug code with python crashes
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     ADD_DEFINITIONS(-D_PYL_DBG)
+    ADD_DEFINITIONS(-D_PYL_DBG)
 ENDIF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 
 # Set library directory
@@ -40,12 +41,12 @@ ENDIF(NOT(${_PYTHON_LIB_DIR}))
 
 # Set actual library file
 IF(WIN32)
-    # We must link against the correct 
+    # We must link against the correct
     # library on Windows, or crash
     IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-        SET(PYTHON_LIB "python${PY_VER}_d")
+        SET(PYTHON_LIB "python${_PY_VER}_d")
     ELSE(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-        SET(PYTHON_LIB "python${PY_VER}")
+        SET(PYTHON_LIB "python${_PY_VER}")
     ENDIF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 ELSE(WIN32)
     # Otherwise link against the shared object
@@ -72,8 +73,8 @@ ENDIF(NOT(${_PYTHON_INCLUDE_DIR}))
 MESSAGE("\n")
 
 # Declare PyLiaison library
-ADD_LIBRARY(PyLiaison 
-    ${CMAKE_CURRENT_SOURCE_DIR}/pyliaison.cpp 
+ADD_LIBRARY(PyLiaison
+    ${CMAKE_CURRENT_SOURCE_DIR}/pyliaison.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/pyliaison.h)
 
 # We need the include path and the python header file location
