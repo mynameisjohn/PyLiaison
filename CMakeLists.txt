@@ -20,3 +20,7 @@ TARGET_LINK_LIBRARIES(pylHelloWorld LINK_PUBLIC PyLiaison ${PYTHON_LIB})
 # Test Script
 ADD_EXECUTABLE(pylTestScript ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestScript.cpp ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestScript.py)
 TARGET_LINK_LIBRARIES(pylTestScript LINK_PUBLIC PyLiaison ${PYTHON_LIB})
+
+# Test Modules
+ADD_EXECUTABLE(pylTestModules ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestModules.cpp)
+TARGET_LINK_LIBRARIES(pylTestModules LINK_PUBLIC PyLiaison ${PYTHON_LIB})

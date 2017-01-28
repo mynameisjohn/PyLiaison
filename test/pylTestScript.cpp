@@ -30,6 +30,8 @@ class Foo:
 fooInst = Foo()
 */
 
+// The purpose of this example is to show how code 
+// written in a python script can be used in C++ code 
 int main( int argc, char ** argv )
 {	
 	// We may get an exception from the interpreter if something is amiss

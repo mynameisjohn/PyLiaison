@@ -756,7 +756,7 @@ namespace pyl
 		{
 			std::tuple<Args...> tup;
 			convert( a, tup );
-			R rVal = invoke( fn, tup );
+			R rVal = _invoke( fn, tup );
 
 			return alloc_pyobject( rVal );
 		};
@@ -770,7 +770,7 @@ namespace pyl
 		{
 			std::tuple<Args...> tup;
 			convert( a, tup );
-			invoke( fn, tup );
+			_invoke( fn, tup );
 
 			Py_INCREF( Py_None );
 			return Py_None;
@@ -804,7 +804,7 @@ namespace pyl
 			_add_to_tuple<sizeof...(Args) -1, 1, Args...>( a, tup );
 
 			// Invoke function, get retVal
-			R rVal = invoke( fn, tup );
+			R rVal = _invoke( fn, tup );
 
 			// convert rVal to PyObject, return
 			return alloc_pyobject( rVal );
@@ -825,7 +825,7 @@ namespace pyl
 			_add_to_tuple<sizeof...(Args) -1, 1, Args...>( a, tup );
 
 			// invoke function
-			invoke( fn, tup );
+			_invoke( fn, tup );
 
 			// Return None
 			Py_INCREF( Py_None );
@@ -1309,7 +1309,7 @@ Like pylCreateMod but with second doc string argument*/
 
 /*! pylAddFnToMod \brief Macro to add function F to module M
 This can get cumbersome otherwise...*/
-#define AddFnToMod(M, F)\
+#define pylAddFnToMod(M, F)\
 	M->RegisterFunction<struct __st_fn##F>(#F, pyl::_make_function(F))
 
 /*! pylAddMemFnToMod \brief Macro to add function a member function F of class C to module M
