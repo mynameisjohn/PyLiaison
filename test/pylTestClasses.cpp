@@ -71,7 +71,6 @@ int main( int argc, char ** argv )
 		// via pointer - this is my preferred method
 		Foo f2;
 		pyl::GetMainModule().set_attr( "p_f2", &f2 );
-		pyl::run_cmd( "import pylFoo" );
 		pyl::run_cmd( "f2 = pylFoo.Foo(p_f2)" );
 		pyl::run_cmd( "f2.SetY(12345)" );
 		pyl::run_cmd( "print(f2.GetY())" );
