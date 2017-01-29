@@ -34,8 +34,9 @@ int main( int argc, char ** argv )
 		pyl::run_cmd( "d = 0." );
 		pyl::run_cmd( "print('The cosine of', d, 'is', pylTestModule.MyCos(d))" );
 
-		// We can also store references to 
-		// python modules as pyl::Objects
+		// We can also store references to python modules as pyl::Objects
+		// Here we'll get the os.path module and use it to get the 
+		// absolute path of this file
 		std::string strCurFile;
 		pyl::Object obPathMod = pyl::GetModule( "os.path" );
 		obPathMod.call( "abspath", __FILE__ ).convert( strCurFile );

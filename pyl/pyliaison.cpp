@@ -267,18 +267,20 @@ namespace pyl
 		_add_tuple_var( pTup, PyTuple_Size( pTup ) - 1, arg );
 	}
 
+	// -------------- Generic Py Class stuff ----------------
 
+	const /*static*/ char * _GenericPyClass::c_ptr_name = "c_ptr";
+	int _GenericPyClass::SetCapsuleAttr( PyObject * pCapsule )
+	{
+		return PyObject_SetAttrString( ( PyObject * )this, _GenericPyClass::c_ptr_name, pCapsule );
+	}
+	
 	// -------------- Exposed Class Definition ----------------
 
 	_ExposedClassDef::_ExposedClassDef()
 	{
-		// Take care of this now
-		memset( &m_TypeObject, 0, sizeof( PyTypeObject ) );
-		m_TypeObject.ob_base = PyVarObject_HEAD_INIT( NULL, 0 )
-			m_TypeObject.tp_init = (initproc) PyClsInitFunc;
-		m_TypeObject.tp_new = PyType_GenericNew;
-		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-		m_TypeObject.tp_basicsize = sizeof( _GenericPyClass );
+		// See unprepare, but this just resets the type object
+		UnPrepare();
 	}
 
 
@@ -289,23 +291,43 @@ namespace pyl
 		m_strClassName = strClassName;
 	}
 
-	// This has to happen at a time when these
-	// definitions will no longer move
+	// Prepare the exposed class definition
+	// This must take place when the _ExposedClassDef will no longer move in memory
 	void _ExposedClassDef::Prepare()
 	{
-		AddMember( "c_ptr", T_OBJECT_EX, offsetof( _GenericPyClass, capsule ), 0, "pointer to the underlying c object" );
+		// Add a member called c_ptr 
+		AddMember( _GenericPyClass::c_ptr_name, T_OBJECT_EX, offsetof( _GenericPyClass, pCapsule ), 0, "pointer to the underlying c object" );
 
-		// Assing the pointers
+		// Assigning pointers (this is why the memory can't move)
 		m_TypeObject.tp_name = m_strClassName.c_str();
 		m_TypeObject.tp_members = (PyMemberDef *) m_ntMemberDefs.data();
 		m_TypeObject.tp_methods = (PyMethodDef *) m_ntMethodDefs.data();
 	}
 
+	void _ExposedClassDef::UnPrepare()
+	{
+		// Initialize m_TypeObject
+		memset( &m_TypeObject, 0, sizeof( PyTypeObject ) );
+		m_TypeObject.ob_base = PyVarObject_HEAD_INIT( NULL, 0 )
+
+		// Assign constructor to PyClsInitFunc, leave new generic
+		m_TypeObject.tp_init = (initproc) _PyClsInitFunc;
+		m_TypeObject.tp_new = PyType_GenericNew;
+		// m_TypeObject.tp_repr = ; // TODO
+
+		// This type object is a base type for any class that
+		// gets exposed - it must at least have space for _GenericPyClass
+		m_TypeObject.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+		m_TypeObject.tp_basicsize = sizeof( _GenericPyClass );
+	}
+
+	// Returns true if pointers assigned in Prepare are not null
 	bool _ExposedClassDef::IsPrepared() const
 	{
 		return (bool) ( m_TypeObject.tp_name && m_TypeObject.tp_members && m_TypeObject.tp_methods );
 	}
 
+	// Add a method to our null terminated method definition buffer
 	bool _ExposedClassDef::AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs )
 	{
 		if ( strMethodName.empty() )
@@ -327,6 +349,7 @@ namespace pyl
 		return true;
 	}
 
+	// Add a member to our null terminated method definition buffer
 	bool _ExposedClassDef::AddMember( std::string strMemberName, int type, int offset, int flags, std::string docs )
 	{
 		if ( strMemberName.empty() )
@@ -359,13 +382,14 @@ namespace pyl
 		return m_strClassName.c_str();
 	}
 
-	void _ExposedClassDef::SetName( std::string strName )
+	bool _ExposedClassDef::SetName( std::string strName )
 	{
 		// We can't do this if we're been prepared
 		if ( IsPrepared() )
-			return;
+			return false;
 
 		m_strClassName = strName;
+		return true;
 	}
 
 
@@ -497,26 +521,27 @@ namespace pyl
 	}
 
 	// We only need one instance of the above, shared by exposed objects
-	int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
+	int _PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
 	{
-		// In the example the first arg isn't a PyObject *, but... idk man
-		_GenericPyClass * realPtr = static_cast<_GenericPyClass *>( (void *) self );
-		// The first argument is the capsule object
-		PyObject * c = PyTuple_GetItem( args, 0 );
+		// Interestinly the "self" pointer seams to be an actual _GenericPyClass address
+		// could this be my bug? either way cast to _GenericPyClass 
+		_GenericPyClass * pClass = static_cast<_GenericPyClass *>( (void *) self );
 
-		// There should be a capsule here, if so
-		// increment its ref count and assign the capsule pointer
-		if ( c && PyCapsule_CheckExact( c ) )
+		// When this is called the second constructor argument
+		// is the capsule pointer, so get that now
+		PyObject * pCapsule = PyTuple_GetItem( args, 0 );
+
+		// There should be a capsule here, if so call
+		// SetAttr to assign the member and get out
+		if ( pCapsule && PyCapsule_CheckExact( pCapsule ) )
 		{
 			// TODO do I need to delete the old capsule member?
 			// Py_XDECREF( realPtr->capsule );
-			Py_INCREF( c );
-			realPtr->capsule = c;
-			return 0;
+			return pClass->SetCapsuleAttr( pCapsule );
 		}
 
 		return -1;
-	};
+	}
 
 	// Static module map map declaration
 	ModuleDef::ModuleMap ModuleDef::s_mapPyModules;
@@ -550,12 +575,6 @@ namespace pyl
 		return m_mapExposedClasses.emplace( T, strClassName ).second;
 	}
 
-	void checkError( int ret, std::string strErrMsg )
-	{
-		if ( ret )
-			throw pyl::runtime_error( strErrMsg );
-	}
-
 	// Implementation of expose object function that doesn't need to be in this header file
 	int ModuleDef::exposeObject_impl( const std::type_index T, void * pInstance, const std::string& strName, PyObject * pModule )
 	{
@@ -564,30 +583,45 @@ namespace pyl
 		if ( itExpCls == m_mapExposedClasses.end() )
 			return -1;
 
-		// Make ref to expose class object
-		_ExposedClassDef& expCls = itExpCls->second;
-
 		// If a module wasn't specified, just do main
 		pModule = pModule ? pModule : PyImport_ImportModule( "__main__" );
 		if ( pModule == nullptr )
 			return -1;
 
-		// Allocate a new object instance given the PyTypeObject
-		PyObject* newPyObject = _PyObject_New( expCls.GetTypeObject() );
+		// Make ref to expose class object
+		_ExposedClassDef& expCls = itExpCls->second;
+
+		// Allocate a new object for the class instance
+		// This object really is a _GenericPyClass object, so cast it
+		_GenericPyClass * pNewClass = PyObject_New( _GenericPyClass, expCls.GetTypeObject() );
+		
+		// Zero the capsule pointer
+		// I'd like this to occur in some sort of new function...
+		// but calling PyObject_New doesn't call tp_new for me 
+		// Might be my bug...
+		pNewClass->pCapsule = nullptr;
 
 		// Make a PyCapsule from the void * to the instance (I'd give it a name, but why?
-		PyObject* capsule = PyCapsule_New( pInstance, NULL, NULL );
+		// This will be the capsule member of the _GenericPyClass we allocated
+		PyObject* pCapsule = PyCapsule_New( pInstance, NULL, NULL );
 
-		// Set the c_ptr member variable (which better exist) to the capsule
-		static_cast<_GenericPyClass *>( (void *) newPyObject )->capsule = capsule;
+		// Use SetAttr to assign pCapsule to the c_ptr member
+		pNewClass->SetCapsuleAttr( pCapsule );
 
 		// Make a variable in the module out of the new py object
-		checkError( PyObject_SetAttrString( pModule, strName.c_str(), newPyObject ), "Unable to create variable in module" );
+		// This will return a nonzero number if it fails, and increment
+		// pNewClass's reference count
+		int ret = PyObject_SetAttrString( pModule, strName.c_str(), (PyObject *) pNewClass );
 
-		// decref and return
+		// decref the module, new py object, and capsule
+		// (we don't need the module, and PyObject_SetAttrString
+		// should have taken care of the new object and its member)
 		Py_DECREF( pModule );
-		Py_DECREF( newPyObject );
-		return 0;
+		Py_DECREF( (PyObject *) pNewClass );
+		Py_DECREF( pCapsule );
+
+		// Return whatever the PyObject_SetAttrString gave to us, which could be bad
+		return ret;
 	}
 
 	// Create the function object invoked when this module is imported

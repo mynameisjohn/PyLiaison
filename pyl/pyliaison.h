@@ -575,12 +575,13 @@ namespace pyl
 		// and we need to assign them before the class
 		// is declared to the interpeter with this function
 		void Prepare();
+		void UnPrepare();
 		bool IsPrepared() const;
 
 		// Getters/Setters
 		PyTypeObject * GetTypeObject() const;
 		const char * GetName() const;
-		void SetName( std::string strName );
+		bool SetName( std::string strName );
 
 		_ExposedClassDef();
 		_ExposedClassDef( std::string strClassName );
@@ -589,11 +590,18 @@ namespace pyl
 	// Exposed classes need a python constructor, backed by this function
 	// Note that this does not construct a C++ class, but rather exposes
 	// it in the interpreter as a new python object
-	int PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwargs );
+	int _PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwargs );
 
-	// All exposed objects inherit from this python type, which has a capsule
-	// member holding a pointer to the original object
-	struct _GenericPyClass { PyObject_HEAD PyObject * capsule { nullptr }; };
+	// All exposed objects inherit from this python type, 
+	// which has a capsule member holding a pointer to the original object
+	struct _GenericPyClass 
+	{ 
+		// Member name of c_ptr
+		const static char * c_ptr_name;// = "c_ptr";
+
+		PyObject_HEAD PyObject * pCapsule { nullptr }; 
+		int SetCapsuleAttr( PyObject * pCapsule );
+	};
 
 	// ------------------- pyl::Object ---------------------
 
@@ -739,10 +747,9 @@ namespace pyl
 		if ( pObject )
 		{
 			_GenericPyClass * pGPC = (_GenericPyClass *) pObject;
-			PyObject * pCapsule = pGPC->capsule;
-			if ( pCapsule && PyCapsule_CheckExact( pCapsule ) )
+			if ( pGPC->pCapsule && PyCapsule_CheckExact( pGPC->pCapsule ) )
 			{
-				return static_cast<C *>( PyCapsule_GetPointer( pCapsule, NULL ) );
+				return static_cast<C *>( PyCapsule_GetPointer( pGPC->pCapsule, NULL ) );
 			}
 		}
 
@@ -1316,6 +1323,18 @@ This can get cumbersome otherwise...*/
 Because of all this template hackery, some compilers will complain unless this is super
 specific. I'm sure there's a better way...*/
 #define pylAddMemFnToMod(M, C, F, R, ...)\
-	std::function<R(C *, ##__VA_ARGS__)> fn##F = &C::F;\
-	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, fn##F)
+	std::function<R(C *, ##__VA_ARGS__)> __fn##F = &C::F;\
+	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, __fn##F)
+
+#define pylAddClassToMod(M, C)\
+	M->RegisterClass<C>( #C )
+
+#define pylAddSubClassToMod(M, C, PM, P)\
+	M->RegisterClass<C, P>( #C, PM )
+
+#define pylExposeClass(M, C, N, MC)\
+	pyl::ModuleDef::GetModuleDef( pyl::GetMainModule().get() )->Expose_Object( &f, N )
+
+#define pylExposeClassInMod(MC, N, M)\
+	pyl::ModuleDef::GetModuleDef( #MC )->Expose_Object( &N, #N, M.get() )
 }
