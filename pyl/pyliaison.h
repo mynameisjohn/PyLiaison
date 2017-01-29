@@ -459,6 +459,8 @@ namespace pyl
 	template <typename T>
 	PyObject * alloc_pyobject( T * ptr )
 	{
+		// The name is specified here to be NULL, but we could give it
+		// a name so long as the string address would outlive the object... 
 		return PyCapsule_New( (void *) ptr, NULL, NULL );
 	}
 

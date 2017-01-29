@@ -72,7 +72,7 @@ int main( int argc, char ** argv )
 		Foo f2;
 		pyl::GetMainModule().set_attr( "p_f2", &f2 );
 		pyl::run_cmd( "f2 = pylFoo.Foo(p_f2)" );
-		pyl::run_cmd( "f2.SetY(12345)" );
+		pyl::run_cmd( "f2.SetY(54321)" );
 		pyl::run_cmd( "print(f2.GetY())" );
 
 		// Shut down the interpreter
