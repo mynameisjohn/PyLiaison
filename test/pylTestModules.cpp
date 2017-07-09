@@ -30,13 +30,13 @@ int main( int argc, char ** argv )
 
 		// Import the module and call the function
 		// (this could be done in a script)
-		pyl::run_cmd( "import pylTestModule\n" );
+		pyl::run_cmd( "import pylTestModule" );
 		pyl::run_cmd( "d = 0." );
 		pyl::run_cmd( "print('The cosine of', d, 'is', pylTestModule.MyCos(d))" );
 
-		// We can also store references to python modules as pyl::Objects
-		// Here we'll get the os.path module and use it to get the 
-		// absolute path of this file
+		// We can also store references to python modules
+		// Here we'll get the os.path module and use it 
+		// to determine the absolute path of this .cpp file
 		std::string strCurFile;
 		pyl::Object obPathMod = pyl::GetModule( "os.path" );
 		obPathMod.call( "abspath", __FILE__ ).convert( strCurFile );

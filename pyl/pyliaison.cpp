@@ -114,6 +114,25 @@ namespace pyl
 		return ret;
 	}
 
+	bool is_py_int(PyObject *obj)
+	{
+		return PyLong_Check(obj);
+	}
+
+	bool is_py_float(PyObject *obj)
+	{
+		return PyFloat_Check(obj);
+	}
+
+	void _add_tuple_var(PyObject * pTup, Py_ssize_t i, PyObject *pobj)
+	{
+		PyTuple_SetItem(pTup, i, pobj);
+	}
+
+	void _add_tuple_vars(PyObject * pTup, PyObject *arg)
+	{
+		_add_tuple_var(pTup, PyTuple_Size(pTup) - 1, arg);
+	}
 
 	// ------------ Conversion functions ------------
 
@@ -177,7 +196,8 @@ namespace pyl
 		return _generic_convert<double>( obj, is_py_float, PyFloat_AsDouble, val );
 	}
 
-	// It's unforunate that this takes so long
+	// There are no 32 bit floats in python, so
+	// try converting from either double or int
 	bool convert( PyObject *obj, float &val )
 	{
 		double d( 0 );
@@ -195,6 +215,19 @@ namespace pyl
 		return false;
 	}
 
+	// Convert some python object to a pyl::Object
+	// If the client knows what to do, let 'em deal with it
+	bool convert(PyObject * obj, pyl::Object& pyObj)
+	{
+		pyObj = pyl::Object(obj);
+		// I noticed that the incref is needed... not sure why?
+		if (PyObject * pObj = pyObj.get())
+		{
+			Py_INCREF(pObj);
+			return true;
+		}
+		return false;
+	}
 
 	// ------------------ PyObject allocators --------------------
 
@@ -230,41 +263,7 @@ namespace pyl
 
 	PyObject *alloc_pyobject( float num )
 	{
-		double d_num( num );
-		return PyFloat_FromDouble( d_num );
-	}
-
-	bool is_py_int( PyObject *obj )
-	{
-		return PyLong_Check( obj );
-	}
-
-	bool is_py_float( PyObject *obj )
-	{
-		return PyFloat_Check( obj );
-	}
-
-	// If the client knows what to do, let 'em deal with it
-	bool convert( PyObject * obj, pyl::Object& pyObj )
-	{
-		pyObj = pyl::Object( obj );
-		// I noticed that the incref is needed... not sure why?
-		if ( PyObject * pObj = pyObj.get() )
-		{
-			Py_INCREF( pObj );
-			return true;
-		}
-		return false;
-	}
-
-	void _add_tuple_var( PyObject * pTup, Py_ssize_t i, PyObject *pobj )
-	{
-		PyTuple_SetItem( pTup, i, pobj );
-	}
-
-	void _add_tuple_vars( PyObject * pTup, PyObject *arg )
-	{
-		_add_tuple_var( pTup, PyTuple_Size( pTup ) - 1, arg );
+		return PyFloat_FromDouble((double)num);
 	}
 
 	// -------------- Generic Py Class stuff ----------------
@@ -411,6 +410,7 @@ namespace pyl
 		m_upPyObject.reset( obj );
 	}
 
+	// Construct object from script
 	Object::Object( const std::string script_path )
 	{
 		// Get the directory path and file name
@@ -425,9 +425,12 @@ namespace pyl
 		}
 		else
 			file_path = script_path;
+
+		// Remove .py extension, if it exists
 		if ( file_path.rfind( ".py" ) == file_path.size() - 3 )
 			file_path = file_path.substr( 0, file_path.size() - 3 );
 
+		// Try to import the module, it may fail if our path isn't set up
 		PyObject * pScript = PyImport_ImportModule( file_path.c_str() );
 		if ( pScript )
 		{
@@ -438,10 +441,10 @@ namespace pyl
 		char arrPath[] = "path";
 		pyl::Object path( PySys_GetObject( arrPath ) );
 		std::set<std::string> curPath;
-
 		pyl::convert( path.get(), curPath );
+
 		// If it isn't add it to the path and try again
-		if ( std::find( curPath.begin(), curPath.end(), base_path ) == curPath.end() )
+		if (curPath.count(base_path) > 0)
 		{
 			Object pwd( PyUnicode_FromString( base_path.c_str() ) );
 			PyList_Append( path.get(), pwd.get() );
@@ -452,6 +455,7 @@ namespace pyl
 		{
 			m_upPyObject.reset( pScript );
 		}
+		// Adding to path didn't help... sorry
 		else
 		{
 			print_error();
@@ -472,7 +476,7 @@ namespace pyl
 			PyObject * pRet = PyObject_CallObject( func.get(), pArgTup );
 			if ( pRet == nullptr )
 				throw pyl::runtime_error( "Failed to call function " + strName );
-			return { pRet };
+			return Object(pRet);
 		}
 		// Release memory and pass along
 		catch ( pyl::runtime_error e )
@@ -496,7 +500,7 @@ namespace pyl
 		PyObject *obj( PyObject_GetAttrString( m_upPyObject.get(), strName.c_str() ) );
 		if ( !obj )
 			throw std::runtime_error( "Unable to find attribute '" + strName + '\'' );
-		return { obj };
+		return Object(obj);
 	}
 
 	bool Object::has_attr( const std::string strName )
@@ -520,7 +524,7 @@ namespace pyl
 		return m_upPyObject.get();
 	}
 
-	// We only need one instance of the above, shared by exposed objects
+	// The actual init function that gets invoked for exposed class instances
 	int _PyClsInitFunc( PyObject * self, PyObject * args, PyObject * kwds )
 	{
 		// Interestinly the "self" pointer seams to be an actual _GenericPyClass address

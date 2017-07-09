@@ -47,16 +47,17 @@ int main( int argc, char ** argv )
 		obScript.call( "HelloWorld" );
 
 		// Pass an argument into a script function
+		// (convert to wide string, in this case)
 		std::string strNarrow = "Python is helpful";
 		std::wstring strWide;
 		obScript.call( "NarrowToWide", strNarrow ).convert( strWide );
 
-		// Objects declared in scripts can be retreived and
+		// Objects declared in scripts can be retrieved and
 		// stored as pyl::Objects, which can be converted to C types
 		// In this case, get the Foo class instance fooInst from the script
 		pyl::Object obFooInst = obScript.get_attr( "fooInst" );
 
-		// Set it's 'x' member, call SetY, and call Print
+		// Set members directly and call member functions
 		obFooInst.set_attr( "x", 12345 );
 		obFooInst.call( "SetY", 54321 );
 		obFooInst.call( "Print" );

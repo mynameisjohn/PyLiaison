@@ -1,5 +1,8 @@
 #pragma once
 
+// Sorry about including... the entire STL here
+// It's mostly for the conversions, so it could
+// probably be fenced out (i.e #ifdef PYL_HAS_STL)
 #include <vector>
 #include <set>
 #include <list>
@@ -1303,8 +1306,7 @@ namespace pyl
 	Throws a runtime_error if the module is not found. */
 	Object GetModule( std::string modName );
 
-#define S1(x) #x
-#define S2(x) S1(x)
+// MACROS!
 
 /*! pylCreateMod \brief Macro to make declaring a module easier
 Invoked as pylCreateMod("MyModName");*/
