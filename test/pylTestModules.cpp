@@ -37,9 +37,8 @@ int main( int argc, char ** argv )
 		// We can also store references to python modules
 		// Here we'll get the os.path module and use it 
 		// to determine the absolute path of this .cpp file
-		std::string strCurFile;
 		pyl::Object obPathMod = pyl::GetModule( "os.path" );
-		obPathMod.call( "abspath", __FILE__ ).convert( strCurFile );
+		std::string strCurFile = obPathMod.call("abspath", __FILE__).as<std::string>();
 		std::cout << "We are currently in " << strCurFile << " line " << __LINE__ << std::endl;
 
 		// Shut down the interpreter

@@ -620,6 +620,7 @@ namespace pyl
 		unique_ptr m_upPyObject;
 
 	public:
+
 		/*!
 		\brief Constructs a default python object */
 		Object();
@@ -726,18 +727,33 @@ namespace pyl
 			return ( success == 0 );
 		}
 
-		/*!
+		/*! get
 		\brief Returns the internal PyObject *
 
 		No reference inc/dec is performed
 		\return The PyObject * this Object represents, nullptr if None*/
 		PyObject * get() const;
 
-							   /*! convert
-							   \brief Attempts to convert this object to a Type T, stored in param
-							   \return True or false depending on success of conversion*/
+		/*! convert
+		\brief Attempts to convert this object to a Type T, stored in param
+		\return True or false depending on success of conversion*/
 		template<class T>
-		bool convert( T &param ) { return pyl::convert( this->get(), param ); }
+		bool convert( T &param ) const { return pyl::convert( this->get(), param ); }
+
+		/*! as
+		\brief Get a PyObject as some type T
+		\tparam T The expected underlying type
+		\return An instance of the converted type
+
+		Because we can't check for failure like we would with convert, 
+		this throws an exception if the conversion fails*/
+		template<typename T>
+		T as() const {
+			T ret;
+			if (!convert(ret))
+				throw pyl::runtime_error("pyl::Object::as: Couldn't convert PyObject");
+			return ret;
+		}
 
 		/*! reset
 		\brief Decerements our reference of the PyObject

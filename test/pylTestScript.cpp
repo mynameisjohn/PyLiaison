@@ -40,7 +40,8 @@ int main( int argc, char ** argv )
 		// Initialize the python interpreter
 		pyl::initialize();
 
-		// Construct object from script (path is relative)
+		// Construct object from script 
+		// (path is relative, so you may have to copy the file)
 		pyl::Object obScript( "./pylTestScript.py" );
 		
 		// Call a function in the script
@@ -48,9 +49,7 @@ int main( int argc, char ** argv )
 
 		// Pass an argument into a script function
 		// (convert to wide string, in this case)
-		std::string strNarrow = "Python is helpful";
-		std::wstring strWide;
-		obScript.call( "NarrowToWide", strNarrow ).convert( strWide );
+		std::wstring strWide = obScript.call("NarrowToWide", "Python is helpful").as<std::wstring>();
 
 		// Objects declared in scripts can be retrieved and
 		// stored as pyl::Objects, which can be converted to C types
