@@ -28,3 +28,7 @@ TARGET_LINK_LIBRARIES(pylTestModules LINK_PUBLIC PyLiaison ${PYTHON_LIB})
 # Test Classes
 ADD_EXECUTABLE(pylTestClasses ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestClasses.cpp)
 TARGET_LINK_LIBRARIES(pylTestClasses LINK_PUBLIC PyLiaison ${PYTHON_LIB})
+
+# Test overloads
+ADD_EXECUTABLE(pylTestOverloads ${CMAKE_CURRENT_SOURCE_DIR}/test/pylTestOverloads.cpp)
+TARGET_LINK_LIBRARIES(pylTestOverloads LINK_PUBLIC PyLiaison ${PYTHON_LIB})
