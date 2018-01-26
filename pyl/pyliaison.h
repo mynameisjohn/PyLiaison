@@ -16,6 +16,10 @@
 #include <Python.h>
 #include <structmember.h>
 
+#if _WIN32
+#define LIB_EXPORT_API __declspec(dllexport)
+#endif
+
 #ifndef _PY_VER
 	#define _PY_VER "35"
 #endif // _PYVER
@@ -34,6 +38,30 @@ namespace pyl
 	void initialize();
 	void finalize();
 	bool isInitialized();
+
+	struct StructSequence
+	{
+		std::string strName;
+		std::string strDocs;
+		struct Field
+		{
+			std::string name;
+			std::string docs;
+		};
+		std::list<Field> liFields;
+		std::basic_string<PyStructSequence_Field> ntFields;
+		PyStructSequence_Desc GetDesc() {
+			PyStructSequence_Desc d;
+			ntFields.clear();
+			for (const Field& f : liFields)
+				ntFields.push_back({ (char *)f.name.c_str(), (char *)f.docs.c_str() });
+			d.doc = (char *)strDocs.c_str();
+			d.name = (char *)strName.c_str();
+			d.n_in_sequence = (int)ntFields.size();;
+			d.fields = (PyStructSequence_Field *)ntFields.data();
+			return d;
+		}
+	};
 
 	// ----------------- Utility -----------------
 
