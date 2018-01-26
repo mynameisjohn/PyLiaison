@@ -3,6 +3,13 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 # Project needs c++14 for std::integer_sequence
 SET(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 
+# Default build type
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
+      FORCE)
+endif(NOT CMAKE_BUILD_TYPE)
+
 # Specify the python version
 # Be wary of doing something like
 # 3.5 instead of 35, etc.
