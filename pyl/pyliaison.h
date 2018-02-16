@@ -348,9 +348,12 @@ namespace pyl
 			// If this is a list, turn it into a set
 			if ( PyList_Check( obj ) )
 			{
-				std::list<C> liRet = pyl::Object( obj ).as<std::list<C> >();
-				s = std::set<C>( liRet.begin(), liRet.end() );
-				return true;
+				std::list<C> liRet;
+				if (convert(obj, liRet))
+				{
+					s = std::set<C>(liRet.begin(), liRet.end());
+					return true;
+				}
 			}
 			return false;
 		}
