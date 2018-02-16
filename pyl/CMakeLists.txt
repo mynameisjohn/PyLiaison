@@ -13,6 +13,10 @@ endif(NOT CMAKE_BUILD_TYPE)
 # Use the CMake find python package
 FIND_PACKAGE(PythonLibs)
 
+# The FindPythonLibs module doesn't give us the lib directory, 
+# so use the library path to find it with GET_FILENAME_COMPONENT
+GET_FILENAME_COMPONENT(PYTHON_LIB_DIR ${PYTHON_LIBRARIES} DIRECTORY )
+
 # Declare PyLiaison library
 ADD_LIBRARY(PyLiaison
     ${CMAKE_CURRENT_SOURCE_DIR}/pyliaison.cpp
