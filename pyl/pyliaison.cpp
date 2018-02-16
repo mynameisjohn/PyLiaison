@@ -143,6 +143,11 @@ namespace pyl
 			val = PyBytes_AsString( obj );
 			return true;
 		}
+		else if ( PyByteArray_Check( obj ) )
+		{
+			val = PyBytes_AsString( obj );
+			return true;
+		}
 		else if ( PyUnicode_Check( obj ) )
 		{
 			val = PyUnicode_AsUTF8( obj );
@@ -170,14 +175,19 @@ namespace pyl
 
 	bool convert( PyObject *obj, std::vector<char> &val )
 	{
-		if ( !PyByteArray_Check( obj ) )
-			return false;
-		if ( val.size() < (size_t) PyByteArray_Size( obj ) )
+		if ( PyBytes_Check( obj ) )
+		{
+			val.resize( PyBytes_Size( obj ) );
+			memcpy( val.data(), PyBytes_AsString( obj ), val.size() );
+			return true;
+		}
+		else if ( PyByteArray_Check( obj ) )
+		{
 			val.resize( PyByteArray_Size( obj ) );
-		std::copy( PyByteArray_AsString( obj ),
-				   PyByteArray_AsString( obj ) + PyByteArray_Size( obj ),
-				   val.begin() );
-		return true;
+			memcpy( val.data(), PyByteArray_AsString( obj ), val.size() );
+			return true;
+		}
+		return false;
 	}
 
 	bool convert( PyObject *obj, bool &value )
