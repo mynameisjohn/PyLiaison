@@ -3,7 +3,7 @@
 struct Vector4 
 {
 	float x, y, z, w;
-	float& operator[](size_t idx) const { return ((float *)this)[idx]; }
+	float& operator[](int idx) const { return ((float *)this)[idx]; }
 };
 
 // Declare these conversions before including pyliaision.h
