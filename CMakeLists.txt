@@ -1,10 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
-# Add subdir for Pyliaison
-ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/pyl)
-
 # Add test executables
 PROJECT(pylTests)
+
+# Add subdir for Pyliaison
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/pyl)
 
 # Hello World
 ADD_EXECUTABLE(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
