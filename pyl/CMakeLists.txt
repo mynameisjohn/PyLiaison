@@ -1,5 +1,11 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
+# Make sure we have some python exe as hint
+# if was already specified as absolute then leave it alone
+if (NOT(IS_ABSOLUTE "${PYTHON_EXECUTABLE}"))
+	FIND_PROGRAM(PYTHON_EXECUTABLE python)
+endif (NOT(IS_ABSOLUTE "${PYTHON_EXECUTABLE}"))
+
 # Project needs c++14 for std::integer_sequence
 SET(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 
@@ -20,19 +26,10 @@ ADD_LIBRARY(PyLiaison
 
 # The FindPythonLibs module doesn't give us the lib directory, 
 # so use the library path to find it with GET_FILENAME_COMPONENT
-GET_FILENAME_COMPONENT(PYTHON_LIB_DIR ${PYTHON_LIBRARIES} DIRECTORY )
+#GET_FILENAME_COMPONENT(PYTHON_LIB_DIR "${PYTHON_LIBRARIES}" DIRECTORY )
 
 # Adding PyLiaison as a target gives us the pyl and Python include paths
 TARGET_INCLUDE_DIRECTORIES(PyLiaison PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_INCLUDE_DIRS})
 
-# On Windows the python libraries are linked automatically
-# (see pyconfig.h line 286)
-IF(WIN32)
-	# But in order for that to work we need to add the library
-	# directory to the link_directories path... which is annoying
-	SET(PYTHON_LIB_DIR ${PYTHON_LIB_DIR} PARENT_SCOPE)
-ELSE(WIN32)
-	# On other platforms leverage TARGET_LINK_LIBRARIES
-	TARGET_LINK_LIBRARIES(PyLiaison PUBLIC ${PYTHON_LIBRARIES})
-ENDIF(WIN32)
+TARGET_LINK_LIBRARIES(PyLiaison PUBLIC ${PYTHON_LIBRARIES})
 

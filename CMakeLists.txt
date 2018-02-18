@@ -1,20 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
-PROJECT(pylTests)
-
-# Use the CMake find python package
-FIND_PACKAGE(PythonLibs REQUIRED)
-
-# We use c++14 for std::integer_sequence
-SET(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
-
 # Add subdir for Pyliaison
 ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/pyl)
 
-# Add python link directory (only Windows needs this)
-LINK_DIRECTORIES(${PYTHON_LIB_DIR})
-
 # Add test executables
+PROJECT(pylTests)
 
 # Hello World
 ADD_EXECUTABLE(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
