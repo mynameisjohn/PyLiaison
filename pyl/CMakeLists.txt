@@ -14,7 +14,7 @@ SET(CMAKE_BUILD_TYPE "Release" CACHE STRING
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
 # Use the CMake find python package
-FIND_PACKAGE(PythonLibs REQUIRED)
+FIND_PACKAGE(PythonLibs 3 REQUIRED)
 
 # Declare PyLiaison library
 ADD_LIBRARY(PyLiaison
