@@ -17,6 +17,9 @@ FIND_PACKAGE(PythonLibs)
 # so use the library path to find it with GET_FILENAME_COMPONENT
 GET_FILENAME_COMPONENT(PYTHON_LIB_DIR ${PYTHON_LIBRARIES} DIRECTORY )
 
+# Add python library directory to the parent scope
+SET(PYTHON_LIB_DIR ${PYTHON_LIB_DIR} PARENT_SCOPE)
+
 # Declare PyLiaison library
 ADD_LIBRARY(PyLiaison
     ${CMAKE_CURRENT_SOURCE_DIR}/pyliaison.cpp
