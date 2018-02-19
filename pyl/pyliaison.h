@@ -197,6 +197,14 @@ namespace pyl
 	Could be more lenient - only accepts True or False for now*/
 	bool convert( PyObject *obj, bool &value );
 
+	/*! convert \brief Convert a PyObject to a char
+	Works for bytes and unicode*/
+	bool convert( PyObject *obj, char &val );
+
+	/*! convert \brief Convert a PyObject to a wide char
+	Works for bytes and unicode*/
+	bool convert( PyObject *obj, wchar_t &val );
+
 	/*! convert \brief Convert a PyObject to a double
 	Works if the object is a PyFloat or PyLong*/
 	bool convert( PyObject *obj, double &val );
@@ -471,6 +479,8 @@ namespace pyl
 	/*! alloc_pyobject \brief Creates (wide) Pystring from a const char**/
 	PyObject *alloc_pyobject( const char *cstr );
 
+	PyObject *alloc_pyobject( const char c );
+
 	/*! alloc_pyobject \brief Creates a PyBool from a bool*/
 	PyObject *alloc_pyobject( bool value );
 
@@ -689,8 +699,32 @@ namespace pyl
 		construct an object containing it. This, like any object,
 		can have its members and functions accessed*/
 		Object( std::string strScript );
+		static Object from_script( std::string strScript );
 
-		Object _call_impl( const std::string strName, PyObject * pArgTup = nullptr );
+		Object _call_impl( PyObject * pFunc, PyObject * pArgTup = nullptr );
+
+
+		template<typename... Args>
+		Object operator()( const Args... args )
+		{			
+			// Try to call, clean memory on error
+			unique_ptr upTup;
+			try
+			{
+				// Create the tuple argument
+				upTup.reset( PyTuple_New( sizeof...(args) ) );
+				_add_tuple_vars( upTup.get(), args... );
+				return _call_impl( get(), upTup.get() );
+			}
+			// Release memory and pass along
+			catch ( pyl::runtime_error e )
+			{
+				print_error();
+				upTup.reset();
+				throw e;
+			}
+			return{ nullptr };
+		}
 
 		/*! call
 		\brief Invokes the "__call__" operator of object.name
@@ -700,23 +734,7 @@ namespace pyl
 		template<typename... Args>
 		Object call( const std::string strName, const Args... args )
 		{
-			// Try to call, clean memory on error
-			unique_ptr upTup;
-			try
-			{
-				// Create the tuple argument
-				upTup.reset( PyTuple_New( sizeof...( args ) ) );
-				_add_tuple_vars( upTup.get(), args... );
-				return _call_impl( strName, upTup.get() );
-			}
-			// Release memory and pass along
-			catch ( pyl::runtime_error e )
-			{
-				print_error();
-				upTup.reset();
-				throw e;
-			}
-			return { nullptr };
+			return get_attr( strName )(args...);
 		}
 
 		/*! call
@@ -725,6 +743,7 @@ namespace pyl
 		This will invoke the "__call__" operator of the object's
 		"name" attribute, if one exists, else throws a runtime error*/
 		Object call( const std::string strName );
+		Object operator()();
 
 		/*! get_attr
 		\brief Returns the attr at strName as a pyl Object
@@ -797,6 +816,19 @@ namespace pyl
 			if (!convert(ret))
 				throw pyl::runtime_error("pyl::Object::as: Couldn't convert PyObject");
 			return ret;
+		}
+
+		/*! as
+		\brief Get a PyObject as some type T
+		\tparam T The expected underlying type
+		\return An instance of the converted type
+
+		Because we can't check for failure like we would with convert,
+		this throws an exception if the conversion fails*/
+		template<typename T>
+		operator T() const
+		{
+			return as<T>();
 		}
 
 		/*! reset
@@ -1360,7 +1392,7 @@ namespace pyl
 	};
 
 	/*! InitAllModules \brief Returns the main module as a pyl::Object*/
-	Object GetMainModule();
+	Object main();
 
 	/*! InitAllModules \brief Returns the module with name modNameas a pyl::Object
 	Throws a runtime_error if the module is not found. */
@@ -1397,7 +1429,7 @@ specific. I'm sure there's a better way...*/
 	M->RegisterClass<C, P>( #C, PM )
 
 #define pylExposeClass(M, C, N, MC)\
-	pyl::ModuleDef::GetModuleDef( pyl::GetMainModule().get() )->Expose_Object( &f, N )
+	pyl::ModuleDef::GetModuleDef( pyl::main().get() )->Expose_Object( &f, N )
 
 #define pylExposeClassInMod(MC, N, M)\
 	pyl::ModuleDef::GetModuleDef( #MC )->Expose_Object( &N, #N, M.get() )

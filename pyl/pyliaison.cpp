@@ -138,6 +138,7 @@ namespace pyl
 
 	bool convert( PyObject *obj, std::string &val )
 	{
+		// if bytes or bytearray to PyBytes_AsString
 		if ( PyBytes_Check( obj ) )
 		{
 			val = PyBytes_AsString( obj );
@@ -148,6 +149,7 @@ namespace pyl
 			val = PyBytes_AsString( obj );
 			return true;
 		}
+		// We can do a unicode conversion as well
 		else if ( PyUnicode_Check( obj ) )
 		{
 			val = PyUnicode_AsUTF8( obj );
@@ -164,12 +166,14 @@ namespace pyl
 			val = PyUnicode_AsWideCharString( obj, &size );
 			return true;
 		}
-		//else if ( PyBytes_Check( obj ) )
-		//{
-		//	 NYI
-		//	PyObject * unicodeString = PyUnicode_Decode( PyBytes_AsString( obj ), PyBytes_Size( obj ), "utf16", nullptr );
-		//	return convert( unicodeString, val );
-		//}
+		// If a bytes string, decode to utf16 and recurse, free our utf python string
+		else if ( PyBytes_Check( obj ) || PyByteArray_Check( obj ) )
+		{
+			PyObject * unicodeString = PyUnicode_Decode( PyBytes_AsString( obj ), PyBytes_Size( obj ), "utf8", nullptr );
+			bool bRet = convert( unicodeString, val );
+			Py_XDECREF( unicodeString );
+			return bRet;
+		}
 		return false;
 	}
 
@@ -199,6 +203,30 @@ namespace pyl
 		else
 			return false;
 		return true;
+	}
+
+	// These single character conversions aren't the most
+	// efficient, but I don't think they come up often
+	// Convert to string and get first character
+	bool convert( PyObject *obj, char &value )
+	{
+		std::string strContainer;
+		if ( convert( obj, strContainer ) )
+		{
+			value = strContainer[0];
+			return true;
+		}
+		return false;
+	}
+	bool convert( PyObject *obj, wchar_t &value )
+	{
+		std::wstring strContainer;
+		if ( convert( obj, strContainer ) )
+		{
+			value = strContainer[0];
+			return true;
+		}
+		return false;
 	}
 
 	bool convert( PyObject *obj, double &val )
@@ -259,6 +287,11 @@ namespace pyl
 	PyObject *alloc_pyobject( const char *cstr )
 	{
 		return PyBytes_FromString( cstr );
+	}
+
+	PyObject *alloc_pyobject( const char c )
+	{
+		return PyBytes_FromFormat( "%c", c );
 	}
 
 	PyObject *alloc_pyobject( bool value )
@@ -421,9 +454,10 @@ namespace pyl
 	}
 
 	// Construct object from script
-	Object::Object( const std::string script_path )
+	Object::Object( std::string script_path )
 	{
 		// Get the directory path and file name
+		std::replace( script_path.begin(), script_path.end(), '\\', '/' );
 		std::string base_path( "." ), file_path;
 		size_t last_slash( script_path.rfind( "/" ) );
 		if ( last_slash != std::string::npos )
@@ -479,20 +513,21 @@ namespace pyl
 			throw runtime_error( "Error importing path" );
 		}
 	}
+	/*static*/ Object Object::from_script( std::string strScript )
+	{
+		return Object( strScript );
+	}
 
-	Object Object::_call_impl( const std::string strName, PyObject * pArgTup /*= nullptr*/ )
+	Object Object::_call_impl( PyObject * pFunc, PyObject * pArgTup /*= nullptr*/ )
 	{
 		// Try to call, clean memory on error
 		Object func;
 		try
 		{
-			// Load function and arguments into unique ptrs
-			func = get_attr( strName );
-
 			// Call object, return result
-			PyObject * pRet = PyObject_CallObject( func.get(), pArgTup );
+			PyObject * pRet = PyObject_CallObject( pFunc, pArgTup );
 			if ( pRet == nullptr )
-				throw pyl::runtime_error( "Failed to call function " + strName );
+				throw pyl::runtime_error( "Failed to call function " );
 			return Object(pRet);
 		}
 		// Release memory and pass along
@@ -506,7 +541,11 @@ namespace pyl
 
 	Object Object::call( const std::string strName )
 	{
-		return _call_impl( strName );
+		return _call_impl( get_attr( strName ).get() );
+	}
+	Object Object::operator()()
+	{
+		return _call_impl( get() );
 	}
 
 	Object Object::get_attr( const std::string strName )
@@ -771,7 +810,7 @@ namespace pyl
 		throw runtime_error( "Error locating module!" );
 	}
 
-	Object GetMainModule()
+	Object main()
 	{
 		return GetModule( "__main__" );
 	}
