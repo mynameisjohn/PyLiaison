@@ -8,9 +8,34 @@ pyl::RunCmd( "print('Hello from Python!')" );
 
 ## Purpose
 
-The purpose of this library is to allow for projects that make use of both dynamic and compiled code to obtain a balance between performance and iteration time. C++ code can be exposed to and driven by python scripts via the use of custom modules, and python objects (including modules and functions) can be stored as C++ objects for scripted interfaces and components. 
+The purpose of this library is to allow for projects that make it easy to combine static and dynamic code to help manage performance and iteration time. C++ code can be exposed to and driven by python scripts via the use of custom modules, and python objects (including modules and functions) can be stored as C++ objects for scripted interfaces and components. 
 
 Data can also be passed to and from the interpreter freely, and custom overloads can be written to convert python objects to C++ types or allocate python objects from C++ types. 
+
+## Instructions
+
+<b>Currently PyLiaison only works with python 3</b>. In order to work with PyLiaison you must have the python 3 development libraries installed. This can be done from the Windows installer or on Linux by installing the python-dev package. 
+
+```bash
+sudo apt-get install libpython3-dev
+```
+
+With the development libraries installed you should be able to execute the following:
+```bash
+git clone https://github.com/mynameisjohn/PyLiaison;
+cd PyLiaison;
+mkdir build;
+cd build;
+cmake ..;
+make;
+./pylHelloWorld;
+```
+By default the cmake command will find libraries with whichever python executable is in your path (what gets called when you run python.) If you'd like to specify a different path you can execute cmake with the following parameters
+
+```
+cmake .. -DPYTHON_EXECUTABLE=C:/Python/x64/python.exe
+```
+Where ```PYTHON_EXECUTABLE``` points to the executable of the installation you'd like to use (I used the above to build a 64 bit application using Pyliaision). 
 
 ## Examples
 
@@ -101,19 +126,21 @@ def delimit(str, d):
     return str.split(d)
 ```
     
-Scripts can be loaded into pyl::Objects. Any object with a callable variable can be accessed by using a pyl::Object's call function. 
+Scripts can be loaded into pyl::Objects - both absolute paths and paths relative to the executable can be used, and the script path will be added to the intereter's path variable. 
 
 ```C++
 // Load the script from disk into a pyl::Object
-pyl::Object script("script.py");
-
+pyl::Object myScript("script.py");
+```
+We can invoke a function in the script with the ```call``` function. 
+```C++
 // convert the string to wide characters
 std::string strSentence = "My name is John";
-std::wstring strSentenceW = script.call("narrow2wide", strSentence);
+std::wstring strSentenceW = myScript.call("narrow2wide", strSentence);
 
 // Split the string by space, store as a vector
 // vWords = {"My", "name", "is", "John"}
-std::vector<std::string> vWords = script.call( "delimit", strIn, " " );
+std::vector<std::string> vWords = myScript.call( "delimit", strIn, " " );
 ```
 
 ### Conversions
