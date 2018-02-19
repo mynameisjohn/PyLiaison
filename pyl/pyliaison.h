@@ -589,19 +589,20 @@ namespace pyl
 		PyTuple_SetItem( pTup, i, alloc_pyobject( data ) );
 	}
 
-	// Forward declarations
-	template<typename First, typename... Rest>
-	void _add_tuple_vars( PyObject * pTup, const First &head, const Rest&... tail )
-	{
-		_add_tuple_var( pTup, PyTuple_Size( pTup ) - sizeof...(tail) -1, head );
-		_add_tuple_vars( pTup, tail... );
-	}
 
 	// Base case for add_tuple_vars
 	template<typename T>
 	void _add_tuple_vars( PyObject * pTup, const T &arg )
 	{
 		_add_tuple_var( pTup, PyTuple_Size( pTup ) - 1, alloc_pyobject( arg ) );
+	}
+
+	// add_tuple_vars recursively inserts elements into a python tuple
+	template<typename First, typename... Rest>
+	void _add_tuple_vars( PyObject * pTup, const First &head, const Rest&... tail )
+	{
+		_add_tuple_var( pTup, PyTuple_Size( pTup ) - sizeof...(tail) -1, head );
+		_add_tuple_vars( pTup, tail... );
 	}
 
 	// TODO Unordered sets/maps
