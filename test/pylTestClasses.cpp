@@ -60,7 +60,7 @@ int main( int argc, char ** argv )
 		// Expose the instance into the main module
 		// We go through the module definition to ensure that the python object's 
 		// function calls are backed by their C++ counterparts
-		pylExposeClassInMod( pylFoo, f1, pyl::GetMainModule() );
+		pylExposeClassInMod( pylFoo, f1, pyl::main() );
 
 		// Make some calls
 		pyl::run_cmd( "print(f1)" );
@@ -70,10 +70,31 @@ int main( int argc, char ** argv )
 		// We can also expose objects into the interpreter
 		// via pointer - this is my preferred method
 		Foo f2;
-		pyl::GetMainModule().set_attr( "p_f2", &f2 );
+		pyl::main().set_attr( "p_f2", &f2 );
 		pyl::run_cmd( "f2 = pylFoo.Foo(p_f2)" );
 		pyl::run_cmd( "f2.SetY(54321)" );
 		pyl::run_cmd( "print(f2.GetY())" );
+
+		// Here we declare a class called Bar in the main module
+		// (note the in line class definition)
+		pyl::run_cmd( "\
+import random                                     \n\
+class Bar:                                        \n\
+    def __init__(self):                           \n\
+        self.value = random.randint( 0, 100 )     \n\
+    def getValue( self ):                         \n\
+        return self.value                         \n\
+    def setValue( self, value ):                  \n\
+        self.value = value                        \n\
+    def print( self ) :                           \n\
+        print( self.value )" );
+
+		// Instantiate a Bar instance and use it in C++
+		pyl::run_cmd( "b = Bar()" );
+		pyl::Object b = pyl::main().get_attr( "b" );
+		int bValue = b.call( "getValue" );
+		b.call( "setValue", -bValue );
+		b.call( "print" );
 
 		// Shut down the interpreter
 		pyl::finalize();

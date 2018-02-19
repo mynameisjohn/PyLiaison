@@ -36,15 +36,15 @@ int main( int argc, char ** argv )
 		// Allocate this as a python list
 		// This invokes our pyl::alloc_pyobject
 		Vector4 v4{ 1.f, 2.f, 3.f, 4.f };
-		pyl::GetMainModule().set_attr("v4", v4);
-		pyl::run_cmd("print(v4)");
+		pyl::main().set_attr("v4", v4);
+		pyl::run_cmd("print('Forward: ', v4)");
 
 		// Modify in the interpreter, convert back to C struct
 		pyl::run_cmd("v4.reverse()");
-		pyl::GetMainModule().get_attr("v4", v4);
+		pyl::main().get_attr("v4", v4);
 
 		// Print, don't worry about the iomanip frosting
-		std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(1) << "[";
+		std::cout << "Reversed: " << std::setiosflags(std::ios::fixed) << std::setprecision(1) << "[";
 		for (int i = 0; i < 4; i++)
 			std::cout << v4[i] << (i == 3 ? "]" : ", ");
 		std::cout << std::endl;
@@ -69,49 +69,48 @@ int main( int argc, char ** argv )
 namespace pyl
 {
 	// Convert a python list of 4 elements into a Vector4
-	bool convert(PyObject * pObj, Vector4& v4)
+	bool convert( PyObject * pObj, Vector4& v4 )
 	{
-		if (PyList_Check(pObj)) // Create list
+		// Ensure it's a list of 4 elements
+		if ( PyList_Check( pObj ) && PyList_Size( pObj ) == 4 )
 		{
-			if (PyList_Size(pObj) == 4) // Better be 4
+			for ( int i = 0; i < 4; ++i )
 			{
-				for (int i = 0; i < 4; ++i)
-				{
-					// Convert from PyFloat to float
-					float val(0);
-					if (!convert(PyList_GetItem(pObj, i), val))
-						return false;
-					v4[i] = val;
-				}
-				return true;
+				// Convert from PyFloat to float, 
+				// return false if we fail
+				float val;
+				if ( !convert( PyList_GetItem( pObj, i ), val ) )
+					return false;
+				v4[i] = val;
 			}
+			return true;
 		}
 
 		return false;
 	}
 
 	// Construct a python list from a Vector4 instance
-	PyObject * alloc_pyobject(const Vector4& v4)
+	PyObject * alloc_pyobject( const Vector4& v4 )
 	{
-		if (PyObject * pListRet = PyList_New(4)) // Create a list with 4 elements
+		if ( PyObject * pListRet = PyList_New( 4 ) ) // Create a list with 4 elements
 		{
-			for (int i = 0; i < 4; i++)
+			for ( int i = 0; i < 4; i++ )
 			{
 				// Convert from float to PyFloat
-				if (PyObject * pVal = PyFloat_FromDouble((double)v4[i]))
+				if ( PyObject * pVal = PyFloat_FromDouble( (double) v4[i] ) )
 				{
 					// Set the list elements
-					if (PyList_SetItem(pListRet, i, pVal) < 0)
+					if ( PyList_SetItem( pListRet, i, pVal ) < 0 )
 					{
 						// Delete and return null if failure
-						PyObject_Del(pListRet);
+						PyObject_Del( pListRet );
 						return nullptr;
 					}
 				}
 				else
 				{
 					// Delete and return null if failure
-					PyObject_Del(pListRet);
+					PyObject_Del( pListRet );
 					return nullptr;
 				}
 			}

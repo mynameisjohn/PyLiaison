@@ -3,31 +3,16 @@
 
 /* Here is the a copy of the script used in this program
 
-# pylTestScript.py
-
 def HelloWorld():
-    print('Hello World from', __name__)
+print('Hello World from', __name__)
 
-def NarrowToWide(narrowStr):
-    if not(isinstance(narrowStr, bytes)):
-        raise RuntimeError('Error: Byte string input needed!')
-    return narrowStr.decode('utf8')
+def narrow2wide(narrowStr):
+	if not(isinstance(narrowStr, bytes)):
+		raise RuntimeError('Error: Byte string input needed!')
+	return narrowStr.decode('utf8')
 
-class Foo:
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-
-    def SetX(self, x):
-        self.x = x
-
-    def SetY(self, y):
-        self.y = y
-
-    def Print(self):
-        print('My values are', self.x, self.y)
-
-fooInst = Foo()
+def delimit(str, d):
+	return str.split(d)
 */
 
 // The purpose of this example is to show how code 
@@ -41,25 +26,22 @@ int main( int argc, char ** argv )
 		pyl::initialize();
 
 		// Construct object from script 
-		// (path is relative, so you may have to copy the file)
-		pyl::Object obScript( "./pylTestScript.py" );
+		// Because the script file is next to this .cpp file, use the
+		// os.path module to construct a path to the script
+		pyl::Object obPath = pyl::GetModule( "os.path" );
+		std::string strDirectory = obPath.call( "dirname", __FILE__ );
+		std::string strScriptPath = obPath.call( "join", strDirectory, "pylTestScript.py" );
+		pyl::Object obScript( strScriptPath );
 		
 		// Call a function in the script
 		obScript.call( "HelloWorld" );
 
 		// Pass an argument into a script function
 		// (convert to wide string, in this case)
-		std::wstring strWide = obScript.call("NarrowToWide", "Python is helpful").as<std::wstring>();
+		std::wstring strWide = obScript.call("narrow2wide", "Python is helpful");
 
-		// Objects declared in scripts can be retrieved and
-		// stored as pyl::Objects, which can be converted to C types
-		// In this case, get the Foo class instance fooInst from the script
-		pyl::Object obFooInst = obScript.get_attr( "fooInst" );
-
-		// Set members directly and call member functions
-		obFooInst.set_attr( "x", 12345 );
-		obFooInst.call( "SetY", 54321 );
-		obFooInst.call( "Print" );
+		std::string strIn = "My name is John";
+		std::vector<std::string> vOut = obScript.call( "delimit", strIn, " " );
 
 		// Shut down the interpreter
 		pyl::finalize();

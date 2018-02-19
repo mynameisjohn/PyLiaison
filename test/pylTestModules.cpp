@@ -20,7 +20,7 @@ int main( int argc, char ** argv )
 		// prior to initializing the interpreter
 		// The name of the module can be whatever you like,
 		// so long as you don't conflict with anything important
-		pyl::ModuleDef * pModDef = pylCreateMod( pylTestModule );
+		pyl::ModuleDef * pModDef = pylCreateMod( pylModule );
 
 		// Add a function to the module
 		pylAddFnToMod( pModDef, MyCos );
@@ -30,9 +30,8 @@ int main( int argc, char ** argv )
 
 		// Import the module and call the function
 		// (this could be done in a script)
-		pyl::run_cmd( "import pylTestModule" );
-		pyl::run_cmd( "d = 0." );
-		pyl::run_cmd( "print('The cosine of', d, 'is', pylTestModule.MyCos(d))" );
+		pyl::run_cmd( "import pylModule" );
+		pyl::run_cmd( "print('The cosine of', 0, 'is', pylModule.MyCos(0))" );
 
 		// We can also store references to python modules
 		// Here we'll get the os.path module and use it 
