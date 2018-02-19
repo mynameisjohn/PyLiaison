@@ -37,6 +37,18 @@ cmake .. -DPYTHON_EXECUTABLE=C:/Python/x64/python.exe
 ```
 Where ```PYTHON_EXECUTABLE``` points to the executable of the installation you'd like to use (I used the above to build a 64 bit application using Pyliaision). 
 
+See the <a href="https://github.com/mynameisjohn/PyLiaison/blob/master/CMakeLists.txt">CMakeLists.txt</a> in the home directory for an example of how clients can use Pyliaison. All you need to do is add the <a href="https://github.com/mynameisjohn/PyLiaison/tree/master/pyl">pyl</a> folder as a CMake subdirectory of your project. 
+```
+# Add test executables
+PROJECT(pylTests)
+
+# Add subdir for Pyliaison
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/pyl)
+
+# Hello World
+ADD_EXECUTABLE(pylHelloWorld ${CMAKE_CURRENT_SOURCE_DIR}/test/pylHelloWorld.cpp)
+TARGET_LINK_LIBRARIES(pylHelloWorld LINK_PUBLIC PyLiaison )
+```
 ## Examples
 
 ### The Interpreter
