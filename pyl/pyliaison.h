@@ -159,24 +159,32 @@ namespace pyl
 	// TODO
 	//rewrite make_function for class member functions
 
-	// Returns the interpreter's total ref count
+	/*! get_total_ref_count \brief Get Interpreter's ref count
+	Gets the total reference count of the objects used
+	by the interpreter - good for leak detection*/
 	int get_total_ref_count();
 
-	// Print the current error set in the interpreter
+	/*! print_error \brief Print the current error set in the interpreter*/
 	void print_error();
 
-	// Clear whatever error the interpreter has set
+	/*! clear_error \brief Clear whatever error the interpreter has set*/
 	void clear_error();
 
-	// Invoke the standard print function on a PyObject
+	/*! print_object \brief Invoke the standard print function on a PyObject*/
 	void print_object( PyObject *obj );
 
+	/*! run_cmd \brief Execute a text command in the interpeter*/
 	int run_cmd( std::string& strCMD );
+
+	/*! run_cmd \brief Execute a text command in the interpeter*/
 	int run_cmd( const char * pStr );
 
+	/*! run_file \brief Execute a script in the interpeter*/
 	int run_file( std::string strCMD );
 
-	// Used to get tabs for python code strings
+	/*! get_tabs \brief Get properly formatted tab characters
+	In case you need to run a long python command, this can be
+	used to return the proper number of spaces for a tab*/
 	std::string get_tabs( int n );
 
 	// ------------ Conversion functions ------------
@@ -505,14 +513,14 @@ namespace pyl
 	/*! alloc_pyobject \brief Creates a PySet from a std::set<C>*/
 	template<class C> PyObject *alloc_pyobject( const std::set<C>& s );
 
-	// Creates a PyObject from any integral type (gets converted to PyLong)
+	/*! alloc_pyobject \brief Creates a PyObject from any integral type (gets converted to PyLong)*/
 	template<class T, typename std::enable_if<std::is_integral<T>::value, T>::type /*= 0*/>
 	PyObject *alloc_pyobject( T num )
 	{
 		return PyLong_FromLong( num );
 	}
-
-	// Creates a PyCapsule for unspecified pointer types
+	/*! alloc_pyobject \brief Creates a PyCapsule for unspecified pointer types
+	Useful if you want to pass a pointer to something throug the interpreter*/
 	template <typename T>
 	PyObject * alloc_pyobject( T * ptr )
 	{
@@ -521,7 +529,8 @@ namespace pyl
 		return PyCapsule_New( (void *) ptr, NULL, NULL );
 	}
 
-	// Generic python list allocation
+	/*! alloc_list \brief Generic python list allocation
+	Any iterable STL container with an allocatable type is fair game*/
 	template<class T> static PyObject *alloc_list( const T &container )
 	{
 		PyObject *lst( PyList_New( container.size() ) );
@@ -533,19 +542,19 @@ namespace pyl
 		return lst;
 	}
 
-	// Creates a PyList from a std::vector
+	/*! alloc_pyobject \brief Creates a PyList from a std::vector*/
 	template<class T> PyObject *alloc_pyobject( const std::vector<T> &container )
 	{
 		return alloc_list( container );
 	}
 
-	// Creates a PyList from a std::list
+	/*! alloc_pyobject \brief Creates a PyList from a std::list*/
 	template<class T> PyObject *alloc_pyobject( const std::list<T> &container )
 	{
 		return alloc_list( container );
 	}
 
-	// Creates a PyDict from a std::map
+	/*! alloc_pyobject \brief Creates a PyDict from a std::map*/
 	template<class T, class K> PyObject *alloc_pyobject( const std::map<T, K> &container )
 	{
 		PyObject *dict( PyDict_New() );
@@ -559,7 +568,7 @@ namespace pyl
 		return dict;
 	}
 
-	// Creates a PySet from a std::set
+	/*! alloc_pyobject \brief Creates a PySet from a std::set*/
 	template<class C> PyObject *alloc_pyobject( const std::set<C>& s )
 	{
 		PyObject * pSet( PySet_New( NULL ) );
@@ -570,6 +579,7 @@ namespace pyl
 		return pSet;
 	}
 
+	// Used to verify data type
 	bool is_py_float( PyObject *obj );
 	bool is_py_int( PyObject *obj );
 
@@ -625,10 +635,10 @@ namespace pyl
 		PyTypeObject m_TypeObject;                  /*!< Python type object*/
 
 	public:
-		// Add a method to a class definition
+		/*! AddMethod \brief Add a method to a class */
 		bool AddMethod( std::string strMethodName, PyCFunction fnPtr, int flags, std::string docs = "" );
 
-		// Add a member to a class definition
+		/*! AddMember \brief Add a member to a class */
 		bool AddMember( std::string strMemberName, int type, int offset, int flags, std::string doc = "" );
 
 		// The PyTypeObject struct has pointer members,
@@ -677,7 +687,7 @@ namespace pyl
 	public:
 
 		/*!
-		\brief Constructs a default python object */
+		Object \brief Constructs a default python object */
 		Object();
 
 		/*!
@@ -688,23 +698,29 @@ namespace pyl
 		\param obj The pointer from which to construct this Object.*/
 
 		/*!
-		\brief Copy construct from another pyl Object
+		Object \brief Copy construct from another pyl Object
 
 		This will increment the reference counter of the
 		input object, making it similar to an assignment*/
 		Object( PyObject *obj );
 
 		/*!
-		\brief Construct from a script file
+		from_script \brief Construct from a script file
 		Will import a script file into the interpreter and
 		construct an object containing it. This, like any object,
 		can have its members and functions accessed*/
 		Object( std::string strScript );
 		static Object from_script( std::string strScript );
 
+		// Actual call function that invokes __call__ operator
 		Object _call_impl( PyObject * pFunc, PyObject * pArgTup = nullptr );
 
+		/*!
+		operator() \brief Invoke a callable object with args
 
+		This can be used if the object is backed by a python
+		object that can be called, like a function (or anything
+		that implements the __call__ operator)*/
 		template<typename... Args>
 		Object operator()( const Args... args )
 		{			
@@ -819,13 +835,12 @@ namespace pyl
 			return ret;
 		}
 
-		/*! as
+		/*! Cast operator
 		\brief Get a PyObject as some type T
 		\tparam T The expected underlying type
 		\return An instance of the converted type
 
-		Because we can't check for failure like we would with convert,
-		this throws an exception if the conversion fails*/
+		Invokes the pyl::as function - just a convenience*/
 		template<typename T>
 		operator T() const
 		{
@@ -1423,15 +1438,38 @@ specific. I'm sure there's a better way...*/
 	std::function<R(C *, ##__VA_ARGS__)> __fn##F = &C::F;\
 	M->RegisterMemFunction<C, struct __st_fn##C##F>(#F, __fn##F)
 
+/*! pylAddClassToMod \brief Macro to add a C++ class definition to a module
+
+\param[in] M The name of the module you'd like to define the class in
+\param[in] C The class type itself
+
+We won't be able to instantiate new instances of the class, 
+but we can take an existing instance and call functions from 
+python (these functions must be declared using pylAddMemFnToMod*/
 #define pylAddClassToMod(M, C)\
 	M->RegisterClass<C>( #C )
 
-#define pylAddSubClassToMod(M, C, PM, P)\
-	M->RegisterClass<C, P>( #C, PM )
+/*! pylAddSubClassToMod \brief Declare a class C in module M that is a subclass of P defined in PM
 
-#define pylExposeClass(M, C, N, MC)\
-	pyl::ModuleDef::GetModuleDef( pyl::main().get() )->Expose_Object( &f, N )
+\param[in] M The name of the module you'd like to define the subclass in
+\param[in] C The subclass type itself
+\param[in] PM The name of the module containing the parent classes definition (can be same as M)
+\param[in] PC The parent class type itself
 
+This macro gets used if you want to declare a C++ class definition in a module and the class is a
+subclass of an already declared type. That way the newly declared class can invoke all its 
+inherited members from within python*/
+#define pylAddSubClassToMod(M, C, PM, PC)\
+	M->RegisterClass<C, PC>( #C, PM )
+
+/*! pylExposeClassInMod \brief Expose a C++ class instance to the python interpreter
+
+\param[in] MC Pointer to the pyl::ModuleDef instance containing the class definition
+\param[in] N The class instance variable
+\param[in] M Pointer to the module you'd like to expose the class into (i.e pyl::main())
+
+The two modules are required because classes can be defined in one module and used in 
+another. Perhaps I should make a new pyl::ClassDef class that can alliviate this. */
 #define pylExposeClassInMod(MC, N, M)\
 	pyl::ModuleDef::GetModuleDef( #MC )->Expose_Object( &N, #N, M.get() )
 }
